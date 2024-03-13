@@ -1,9 +1,16 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 
+import 'package:fitnessgo/registration_screen.dart';
+import 'package:fitnessgo/reset_password_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
-  runApp(MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Обеспечивает инициализацию виджетов перед запуском Firebase
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform,);
+  runApp(MyApp()); // Асинхронно инициализируем Firebase
 }
 
 class MyApp extends StatelessWidget {
@@ -65,44 +72,71 @@ class AuthorizationScreenState extends State<AuthorizationScreen> {
               Row(
               mainAxisAlignment: MainAxisAlignment.start, 
               children: [  
-                Text('Вход',
+                Align (
+                  alignment: Alignment.centerLeft,
+                  child: Text('Вход',
                 style: TextStyle(
-                fontSize: 24,
+                fontSize: 35,
                 fontWeight: FontWeight.bold,
                   ),
                 ),
-                TextButton(
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
                   onPressed: (){
                     //TODO: Navigate to Registration
+                    Navigator.push(
+                    context, 
+                    MaterialPageRoute(builder: (context) => RegistrationScreen()),
+                  );
 
                   },
-                  child: Text('Создать'),
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.grey,
-                    textStyle: TextStyle(fontSize: 23, fontWeight: FontWeight.normal),
-                    
+                    textStyle: TextStyle(fontSize: 35, fontWeight: FontWeight.normal), 
+                    padding: EdgeInsets.all(10.5),
                   ),
-                )
+                  child: Text('Создать'),
+                  ),
+                ),
               ],
               ),
+              
               SizedBox(height: 48),
+              
               // Phone input field
               TextField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white,
+                  labelStyle: TextStyle(fontFamily: 'Light', fontWeight: FontWeight.w300,),
+                  hintStyle: TextStyle(color:  Colors.black),
                   labelText: 'Телефон',
-                  border: OutlineInputBorder(),
+                   prefixText: '+7 ',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
                 ),
               ),
+              
               SizedBox(height: 16),
+              
               // Password input field
               TextField(
                 controller: _passwordController,
                 obscureText: _isPasswordHidden,
                 decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white,
                   labelText: 'Пароль',
-                  border: OutlineInputBorder(),
+                  
+                  hintStyle: TextStyle(decorationColor: Colors.black),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
                   suffixIcon: IconButton(
                     icon: Icon(_isPasswordHidden
                         ? Icons.visibility_off
@@ -121,15 +155,29 @@ class AuthorizationScreenState extends State<AuthorizationScreen> {
                 onPressed: () {
                   // TODO: Implement login logic
                 },
-                child: Text('Войти'),
+                
                 style: ElevatedButton.styleFrom(
-                  minimumSize: Size(double.infinity, 50),
+                  backgroundColor: Color.fromARGB(255, 6, 98, 77),
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 80, vertical: 10),
+                  textStyle: TextStyle(fontFamily: 'Light', fontWeight: FontWeight.w400, fontSize: 22),
                 ),
+                child: Text('Войти'),
+                
               ),
               TextButton(
                 onPressed: () {
                   // TODO: Implement forgot password logic
+                  Navigator.push(
+                    context, 
+                    MaterialPageRoute(builder: (context) => ResetPasswordScreen()),
+                  );
+                  
                 },
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color.fromARGB(255, 6, 98, 77),
+                  textStyle: TextStyle(fontWeight: FontWeight.bold,),
+                ),
                 child: Text('Забыли пароль?'),
               ),
               // Create account button

@@ -2,6 +2,7 @@
 
 
 
+import 'package:fitnessgo/code_auth_screen.dart';
 import 'package:flutter/material.dart';
 
 class RegistrationScreen extends StatefulWidget {
@@ -122,7 +123,11 @@ class _RegistrationScreenState extends State<RegistrationScreen>{
       
        ElevatedButton(
               onPressed: () {
-                // Логика создания аккаунта
+                
+                Navigator.push(
+                    context, 
+                    MaterialPageRoute(builder: (context) => ConfirmationScreen(phoneNumber: _passwordController.text,)),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor:Color.fromARGB(255, 6, 98, 77), //кнопка
