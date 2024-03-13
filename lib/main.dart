@@ -7,16 +7,18 @@ import 'package:flutter/widgets.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
-void main() async {
+
+ void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Обеспечивает инициализацию виджетов перед запуском Firebase
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform,);
-  runApp(MyApp()); // Асинхронно инициализируем Firebase
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform,);// Асинхронно инициализируем Firebase
+  runApp(MyApp()); // Старт
 }
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'FitnessGO',
       theme: ThemeData(
         primarySwatch: Colors.green,
@@ -25,7 +27,10 @@ class MyApp extends StatelessWidget {
         
       ),
       home: AuthorizationScreen(),
+      
+      
     );
+    
   }
 }
 
