@@ -3,10 +3,12 @@
 
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fitnessgo/main_set_screen.dart';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+//import 'package:fitnessgo/email_verification_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,7 +51,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
     await userCredential.user!.sendEmailVerification();
     // Переход на главный экран приложения или показ сообщения об успешной регистрации
-    _showDialog('Успех', 'Регистрация прошла успешно!');
+    _showDialog('Успех', 'Осталось подтвердить почту!');
   } on FirebaseAuthException catch (e) {
     // Обработка ошибок регистрации
     _showDialog('Ошибка Регистрации', e.message ?? 'Произошла ошибка.');
@@ -66,7 +68,10 @@ void _showDialog(String title, String message) {
       actions: <Widget>[
         TextButton(
           onPressed: () {
-            Navigator.of(ctx).pop();
+            
+            Navigator.push(
+                    context, 
+                    MaterialPageRoute(builder: (context) => ProfileSetupScreen()));
           },
           child: Text('OK'),
         ),

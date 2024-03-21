@@ -68,7 +68,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>{
 
               },
 
-              child: Text('Восстановить'),
+              
               style: ElevatedButton.styleFrom (
                 foregroundColor: Colors.white,
                 backgroundColor: Color.fromARGB(255, 6, 98, 77),
@@ -77,6 +77,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen>{
                 ),
                 padding: EdgeInsets.symmetric(horizontal: 80, vertical: 15),
               ), 
+              child: Text('Восстановить'),
             ),
             TextButton(
               onPressed: () {
