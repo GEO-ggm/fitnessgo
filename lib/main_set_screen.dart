@@ -7,6 +7,8 @@ enum UserType { athlete, coach }
 
 
 class ProfileSetupScreen extends StatefulWidget {
+  const ProfileSetupScreen({super.key});
+
   
   
   @override
@@ -36,7 +38,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> with SingleTick
   
   @override
  Widget build(BuildContext context) {
-    Widget _buildUserTypeButton(String label, String imageAsset, UserType type) {
+    Widget buildUserTypeButton(String label, String imageAsset, UserType type) {
       bool isSelected = _selectedUserType == type;
       return Padding(
         padding: const EdgeInsets.all(20.0),
@@ -105,8 +107,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> with SingleTick
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildUserTypeButton('Спортсмен', 'assets/2.png', UserType.athlete),
-              _buildUserTypeButton('Тренер', 'assets/1.png', UserType.coach),
+              buildUserTypeButton('Спортсмен', 'assets/2.png', UserType.athlete),
+              buildUserTypeButton('Тренер', 'assets/1.png', UserType.coach),
             ],
           ),
           Padding(

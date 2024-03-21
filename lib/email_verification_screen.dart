@@ -6,6 +6,8 @@ import 'dart:async';
 
 
 class EmailVerificationScreen extends StatefulWidget {
+  const EmailVerificationScreen({super.key});
+
   @override
   _EmailVerificationScreenState createState() => _EmailVerificationScreenState();
   
@@ -25,7 +27,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     if (user != null && !user.emailVerified) {
       user.sendEmailVerification();
 
-      timer = Timer.periodic(Duration(seconds: 3), (timer) {
+      timer = Timer.periodic(const Duration(seconds: 3), (timer) {
         checkEmailVerified();
       });
     }
@@ -47,7 +49,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       timer?.cancel();
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => ProfileSetupScreen())); 
+        MaterialPageRoute(builder: (context) => const ProfileSetupScreen())); 
     }
   }
 
@@ -55,27 +57,27 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Подтверждение Электронной Почты'),
+        title: const Text('Подтверждение Электронной Почты'),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Мы отправили письмо с подтверждением на вашу электронную почту.'),
-            Text('Если вы не получили письмо, нажмите кнопку ниже, чтобы отправить еще раз.'),
+            const Text('Мы отправили письмо с подтверждением на вашу электронную почту.'),
+            const Text('Если вы не получили письмо, нажмите кнопку ниже, чтобы отправить еще раз.'),
             ElevatedButton(
               onPressed: () async {
                 var user = FirebaseAuth.instance.currentUser;
                 if (user != null && !user.emailVerified) {
                   await user.sendEmailVerification();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
+                    const SnackBar(
                       content: Text('Письмо с подтверждением было отправлено.'),
                     ),
                   );
                 }
               },
-              child: Text('Отправить письмо с подтверждением еще раз'),
+              child: const Text('Отправить письмо с подтверждением еще раз'),
             )
           ],
         ),

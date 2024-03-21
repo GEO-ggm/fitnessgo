@@ -5,6 +5,7 @@ import 'package:fitnessgo/reset_password_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'main_set_info_screen.dart';
 
 
 
@@ -15,18 +16,23 @@ import 'firebase_options.dart';
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'FitnessGO',
+      
       theme: ThemeData(
+        
         primarySwatch: Colors.green,
         visualDensity: VisualDensity.adaptivePlatformDensity,
         fontFamily: 'Montserrat',
         
+        
       ),
-      home: AuthorizationScreen(),
+      home: UserInfoScreen(),
       
       
     );
@@ -35,6 +41,8 @@ class MyApp extends StatelessWidget {
 }
 
 class AuthorizationScreen extends StatefulWidget {
+  const AuthorizationScreen({super.key});
+
   @override
   AuthorizationScreenState createState() => AuthorizationScreenState();
 }

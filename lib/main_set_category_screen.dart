@@ -3,21 +3,22 @@
 import 'package:flutter/material.dart';
 //import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'main_set_screen.dart';
+import 'main_set_info_screen.dart';
 
 // Список категорий и соответствующих им эмодзи
 final List<Map<String, dynamic>> fitnessCategories = [
-  {'name': 'Йога', 'emoji': 'a'},
-  {'name': 'Силовая', 'emoji': 'b'},
-  {'name': 'Стретчинг', 'emoji': 'c'},
-  {'name': 'Кроссфит', 'emoji': 'd'},
-  {'name': 'Бодибилдинг', 'emoji': 'f'},
+  {'name': 'Йога', 'emoji': '🧘‍♀️'},
+  {'name': 'Силовая', 'emoji': '🏋️'},
+  {'name': 'Стретчинг', 'emoji': '🤸‍♂️'},
+  {'name': 'Кроссфит', 'emoji': '🚴'},
+  {'name': 'Бодибилдинг', 'emoji': '🚴'},
 ];
 
 class FitnessInterestScreen extends StatefulWidget {
   final UserType userType;
   
 
-  FitnessInterestScreen({Key? key, required this.userType}) : super(key: key); // Конструктор с именованным параметром 'userType'
+  const FitnessInterestScreen({super.key, required this.userType}); // Конструктор с именованным параметром 'userType'
  
 
   @override
@@ -25,11 +26,13 @@ class FitnessInterestScreen extends StatefulWidget {
 }
 
 class _FitnessInterestScreenState extends State<FitnessInterestScreen> {
+  List<bool> selectedCategories = List.generate(fitnessCategories.length, (index) => false);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Customize Your Interest'),
+        title: Text('Ваши интересы'),
       ),
       body: Column(
         
@@ -40,8 +43,8 @@ class _FitnessInterestScreenState extends State<FitnessInterestScreen> {
               padding: EdgeInsets.all(16),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
+                crossAxisSpacing: 5,
+                mainAxisSpacing: 5,
                 childAspectRatio: 1.0,
               ),
               itemCount: fitnessCategories.length,
@@ -49,6 +52,9 @@ class _FitnessInterestScreenState extends State<FitnessInterestScreen> {
                 return GestureDetector(
                   onTap: () {
                     // Выбор категории
+                    setState(() {
+                      selectedCategories[index] = !selectedCategories[index];
+                  });
                   },
                   child: Container(
                     decoration: BoxDecoration(
@@ -62,6 +68,10 @@ class _FitnessInterestScreenState extends State<FitnessInterestScreen> {
                           offset: Offset(0, 3),
                         ),
                       ],
+                      border: Border.all(
+                        color: selectedCategories[index] ? Colors.green : Colors.transparent,
+                        width: 3,
+                      ),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -84,8 +94,10 @@ class _FitnessInterestScreenState extends State<FitnessInterestScreen> {
             child: ElevatedButton(
               onPressed: () {
                 // TODO: Действие для кнопки продолжить
+                Navigator.push(context, MaterialPageRoute(builder: (context)=> UserInfoScreen(),),
+                    );
               },
-              child: Text('Continue'),
+              child: Text('Далее'),
             ),
           ),
         ],
