@@ -8,9 +8,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:fitnessgo/training_screen.dart';
 import 'package:fitnessgo/myprofile_screen.dart';
+import 'package:fitnessgo/notify_screen.dart';
 
 
-/// Flutter code sample for [BottomNavigationBar].
 
 void main() => runApp(const CoachProfileScreen());
 
@@ -67,7 +67,12 @@ class _BottomNavigationBarExampleState
           IconButton(
             icon: Icon(Icons.notifications),
             onPressed: () {
-              // Код для открытия уведомлений
+                      
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_)=>NotificationsScreen()),
+              );
+            
+            
             },
           ),
         ]

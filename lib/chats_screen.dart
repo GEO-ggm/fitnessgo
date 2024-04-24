@@ -5,15 +5,16 @@ class ChatScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       
+      
         
-              // Действие поиска
+       
             
        
       body: Column(
         children: [
           Container(
             height: 100,
-            // Этот контейнер для горизонтального списка "Новые парни"
+            // Этот контейнер для горизонтального списка 
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: List.generate(10, (index) => Padding(

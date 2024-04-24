@@ -1,11 +1,13 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 
+import 'package:fitnessgo/main_set_screen.dart';
 import 'package:fitnessgo/registration_screen.dart';
 import 'package:fitnessgo/reset_password_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'glav_screen.dart';
+import 'main_set_category_screen.dart';
 
 
 
@@ -33,7 +35,7 @@ class MyApp extends StatelessWidget {
         
         
       ),
-       home: CoachProfileScreen(),
+       home: FitnessInterestScreen(userType: UserType.athlete,),
       
       
     );

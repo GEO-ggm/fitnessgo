@@ -4,7 +4,7 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fitnessgo/main_set_screen.dart';
-
+import 'package:fitnessgo/email_verification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -42,7 +42,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
       if (password != confirmPassword){
-      _showDialog('Ошибка', 'Пароли не совпадают.');
+      _showDialogError('Ошибка', 'Пароли не совпадают.');
       return;
       }
   try {
@@ -54,13 +54,31 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     await userCredential.user!.sendEmailVerification();
     // Переход на главный экран приложения или показ сообщения об успешной регистрации
     _showDialog('Успех', 'Осталось подтвердить почту!');
+     
   } on FirebaseAuthException catch (e) {
     // Обработка ошибок регистрации
-    _showDialog('Ошибка Регистрации', e.message ?? 'Произошла ошибка.');
+    _showDialogError('Ошибка Регистрации', e.message ?? 'Произошла ошибка.');
   }
 }
 }
 
+void _showDialogError(String title, String message) {
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(title),
+      content: Text(message),
+      actions: <Widget>[
+        TextButton(
+           onPressed: () {
+            Navigator.of(ctx).pop();  // Закрытие диалогового окна
+          },
+          child: Text('OK'),
+        ),
+      ],
+    ),
+  );
+}
 void _showDialog(String title, String message) {
   showDialog(
     context: context,
@@ -69,11 +87,11 @@ void _showDialog(String title, String message) {
       content: Text(message),
       actions: <Widget>[
         TextButton(
-          onPressed: () {
-            
+           onPressed: () {
             Navigator.push(
-                    context, 
-                    MaterialPageRoute(builder: (context) => ProfileSetupScreen()));
+              context, 
+              MaterialPageRoute(builder: (context) => EmailVerificationScreen())
+            );
           },
           child: Text('OK'),
         ),
@@ -81,7 +99,6 @@ void _showDialog(String title, String message) {
     ),
   );
 }
-
   
   
   @override
