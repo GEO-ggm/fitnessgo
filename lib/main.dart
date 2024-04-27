@@ -35,8 +35,8 @@ class MyApp extends StatelessWidget {
         
         
       ),
-       home: FitnessInterestScreen(userType: UserType.athlete,),
-      
+       home: AuthorizationScreen(),
+      //FitnessInterestScreen(userType: UserType.athlete,)
       
     );
     

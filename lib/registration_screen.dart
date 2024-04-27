@@ -35,8 +35,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isPasswordHidden = true;
   bool _isConfirmPasswordHidden = true;
+  final String userId = FirebaseAuth.instance.currentUser!.uid;
   
   Future <void> _registerUser() async {
+    
     if(_formKey.currentState!.validate()){
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();

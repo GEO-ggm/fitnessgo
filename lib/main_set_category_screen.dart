@@ -1,9 +1,11 @@
 // ignore_for_file: prefer_const_constructors
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 //import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'main_set_screen.dart';
 import 'main_set_info_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -29,10 +31,46 @@ class FitnessInterestScreen extends StatefulWidget {
   @override
   _FitnessInterestScreenState createState() => _FitnessInterestScreenState();
 }
-
 class _FitnessInterestScreenState extends State<FitnessInterestScreen> {
   List<bool> selectedCategories = List.generate(fitnessCategories.length, (index) => false);
+  late final String userId; // Создаем переменную для хранения userId
+  late final DocumentReference userDoc; // Создаем переменную для хранения ссылки на документ
+@override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser; // Получаем текущего пользователя
+    if (user != null) {
+      userId = user.uid; // Получаем и сохраняем uid пользователя
+      userDoc = FirebaseFirestore.instance.collection('Users').doc(userId); // Получаем ссылку на документ пользователя
+    }
+  }
 
+
+  // Функция для сохранения предпочтений пользователя
+  Future<void> _savePreferencesToFirebase() async {
+    // Создаем Map для отправки в Firebase
+    final selectedPreferences = <String, bool>{};
+    for (var i = 0; i < fitnessCategories.length; i++) {
+      selectedPreferences[fitnessCategories[i]['name']] = selectedCategories[i];
+    }
+
+    try {
+      // Добавляем выбранные предпочтения в коллекцию
+      await userDoc.set({
+        'choose': selectedPreferences,
+      }, SetOptions(merge: true));
+
+      Future<void> saveUserRole(String role) async {
+      await userDoc.set({
+      'role': role,
+      }, SetOptions(merge: true)); // Используйте merge, чтобы обновить документ, не удаляя существующие поля
+}
+
+      print('Preferences saved successfully!');
+    } catch (e) {
+      print('Error saving preferences: $e');
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -107,7 +145,7 @@ class _FitnessInterestScreenState extends State<FitnessInterestScreen> {
             padding: EdgeInsets.only(bottom: 100),
             child: ElevatedButton(
               onPressed: () {
-
+                 _savePreferencesToFirebase();
                  Navigator.push(context, MaterialPageRoute(builder: (context)=> UserInfoScreen()));
               },
               child: Text('Далее'),
@@ -118,4 +156,3 @@ class _FitnessInterestScreenState extends State<FitnessInterestScreen> {
     );
   }
 }
-  

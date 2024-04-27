@@ -1,14 +1,15 @@
 // ignore_for_file: prefer_const_constructors
 
 import 'dart:io';
-
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'success_reg_screen.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 
 
@@ -18,7 +19,63 @@ class UserInfoScreen extends StatefulWidget {
 
 }
 
+
+
+
 class _UserInfoScreenState extends State<UserInfoScreen> {
+  Future<void> _uploadUserInfo() async {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+      
+      try {
+        String? photoUrl;
+
+        // Проверяем, выбрано ли изображение пользователем
+        if (_image != null) {
+          // Получаем уникальный идентификатор пользователя
+          String userId = FirebaseAuth.instance.currentUser!.uid;
+          
+          // Загрузка изображения в Firebase Storage
+          File imageFile = File(_image!.path);
+          TaskSnapshot snapshot = await FirebaseStorage.instance
+            .ref('user_images/$userId.jpg')
+            .putFile(imageFile);
+            
+          // Получаем URL загруженного изображения
+          photoUrl = await snapshot.ref.getDownloadURL();
+        }
+
+        // Сохранение информации пользователя в Firestore
+        var user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          await FirebaseFirestore.instance.collection('Users').doc(user.uid).set({
+          'photoURL': photoUrl,
+          'name': _firstName,
+          'surname': _lastName,
+          'birthday': _birthDate != null ? DateFormat('dd.MM.yyyy').format(_birthDate!) : null,
+          // Другие поля, если необходимо
+            
+          }, SetOptions(merge: true)); // Используйте merge, чтобы обновлять существующие данные, не удаляя другие поля
+        }
+        
+          
+        
+
+        // Переход к экрану успешной регистрации
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => RegistrationCompleteScreen()),
+        );
+
+      } catch (e) {
+        // Если возникает ошибка, отобразите соответствующее сообщение
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка при сохранении данных: $e')),
+        );
+      }
+    }
+  }
+  
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _dateController = TextEditingController();
   String _firstName = '';
@@ -32,7 +89,9 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
     _dateController.dispose();
     super.dispose();
   }
-
+  
+  
+        
   // Метод для выбора фотографии
   Future<void> _pickAndCropImage() async {
     final pickedImage = await _picker.pickImage(source: ImageSource.gallery);
@@ -201,16 +260,13 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
             child: SizedBox(
               width: double.infinity, // Растягиваем на всю ширину
               child: ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (_formKey.currentState!.validate()) {
                   _formKey.currentState!.save();
-                  // Здесь код для отправки данных в Firebase
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => RegistrationCompleteScreen()),
-                  );
+                   await _uploadUserInfo();
                 }
               },
+              
               style: ElevatedButton.styleFrom(
                   backgroundColor: Color.fromARGB(255, 6, 98, 77),
                   foregroundColor: Colors.white,
@@ -229,3 +285,4 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
     );
   }
 }
+      

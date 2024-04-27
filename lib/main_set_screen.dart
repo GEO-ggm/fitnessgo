@@ -26,6 +26,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> with SingleTick
 
 
 Future<void> _saveUserRole(UserType selectedType) async {
+  
   String role = selectedType == UserType.athlete ? 'Спортсмен' : 'Тренер';
   var user = FirebaseAuth.instance.currentUser;
   if (user != null) {
@@ -41,7 +42,7 @@ Future<void> _saveUserRole(UserType selectedType) async {
     super.initState();
     _progressAnimationController = AnimationController(
       vsync: this,
-      duration: Duration(seconds: 1), // Продолжительность анимации
+      duration: Duration(seconds: 2), // Продолжительность анимации
     );
   
   }
@@ -152,7 +153,7 @@ Future<void> _saveUserRole(UserType selectedType) async {
                       ? () async {
                 await _saveUserRole(_selectedUserType!); // Сохраняем роль
                 // Переход на следующий экран
-                Navigator.push(context, MaterialPageRoute(builder: (context) => FitnessInterestScreen(userType: _selectedUserType!)));
+                Navigator.push(context, MaterialPageRoute(builder: (context) => FitnessInterestScreen(userType: _selectedUserType!, )));
               }
             : null,
             child: Text('Далее'),

@@ -5,24 +5,42 @@ import 'package:fitnessgo/stat_screnn.dart';
 import 'package:flutter/material.dart';
 import 'add_food_screen.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-void main() => runApp(MyApp());
 
-class MyApp extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Профиль',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: ProfileScreen(),
-    );
-  }
+  _ProfileScreenState createState() => _ProfileScreenState();
 }
-
-class ProfileScreen extends StatelessWidget {
+class _ProfileScreenState extends State<ProfileScreen> {
+  String _photoUrl = '';
+  String _fullName = '';
   @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+   Future<void> _loadUserProfile() async {
+    try {
+      // Предположим, что пользователь уже аутентифицирован
+      String userId = FirebaseAuth.instance.currentUser!.uid;
+
+      // Получение документа пользователя из Firestore
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('Users').doc(userId).get();
+
+      if (userDoc.exists) {
+        setState(() {
+          // Используйте название полей как в вашей базе данных
+          _photoUrl = userDoc['photoURL'] ?? '';
+          _fullName = "${userDoc['name'] ?? ''} ${userDoc['surname'] ?? ''}";
+        });
+      }
+    } catch (e) {
+      print('Error loading user profile: $e');
+      // Отобразить сообщение об ошибке, если требуется
+    }
+  }
 Widget build(BuildContext context) {
     return Scaffold(
      
@@ -51,11 +69,12 @@ Widget build(BuildContext context) {
       children: <Widget>[
         CircleAvatar(
           radius: 35,
-          backgroundImage: NetworkImage('URL изображения профиля'),
+          backgroundImage: _photoUrl.isNotEmpty ? NetworkImage(_photoUrl) : null,
+          child: _photoUrl.isEmpty ? Icon(Icons.camera_alt, size: 50) : null,
         ),
       
       
-        Text('Иван Иванов', style: TextStyle(fontSize: 24)),
+        Text(_fullName, style: TextStyle(fontSize: 24)),
       
        
 

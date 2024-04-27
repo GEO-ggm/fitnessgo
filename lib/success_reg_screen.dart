@@ -4,6 +4,7 @@ import 'package:fitnessgo/glav_screen.dart';
 import 'package:flutter/material.dart';
 
 class RegistrationCompleteScreen extends StatelessWidget {
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
