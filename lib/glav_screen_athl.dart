@@ -11,14 +11,13 @@ import 'package:fitnessgo/myprofile_screen.dart';
 import 'package:fitnessgo/notify_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'train_create_screen.dart';
 
 
 
 
 
-class CoachProfileScreen extends StatelessWidget {
-  const CoachProfileScreen({super.key});
+class AthleteProfileScreen extends StatelessWidget {
+  const AthleteProfileScreen({super.key});
   
 
   @override
@@ -50,7 +49,7 @@ class _BottomNavigationBarExampleState
     ChatScreen(),
     ScheduleScreen(),
     MainMenuScreen(),
-    TrainerWorkoutScreen(),
+    TrainingsScreen(),
     ProfileScreen(),
   ];
   

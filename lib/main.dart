@@ -1,12 +1,15 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 
-import 'package:fitnessgo/main_set_screen.dart';
+
 import 'package:fitnessgo/registration_screen.dart';
 import 'package:fitnessgo/reset_password_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'glav_screen.dart';
+import 'glav_screen_athl.dart';
 import 'main_set_category_screen.dart';
 
 
@@ -51,12 +54,59 @@ class AuthorizationScreen extends StatefulWidget {
 }
 
 class AuthorizationScreenState extends State<AuthorizationScreen> {
-  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  User? user = FirebaseAuth.instance.currentUser;
+  String? userType;
   bool _isPasswordHidden = true;
+   // Функция для входа пользователя
+  Future<void> _login() async {
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      
+     if (userCredential.user != null) {
+      String uid = userCredential.user!.uid;
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('Users').doc(uid).get();
+      String userType = userDoc['role']; // Предполагаем, что тип пользователя хранится в поле 'type'
+
+      // Перенаправляем пользователя на соответствующий экран на основе его типа
+      if (userType == 'Тренер') {
+        Navigator.pushReplacement(
+          context, 
+          MaterialPageRoute(builder: (context) => CoachProfileScreen()),
+        );
+      } else if (userType == 'Спортсмен') {
+        Navigator.pushReplacement(
+          context, 
+          MaterialPageRoute(builder: (context) => AthleteProfileScreen()),
+        );
+      } else {
+        // Обработка неизвестного типа пользователя
+        throw Exception("Unknown user type");
+      }
+    }
+  } on FirebaseAuthException catch (e) {
+    // Обработка ошибок входа
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Ошибка входа: ${e.message}')),
+    );
+  } catch (e) {
+    // Обработка других возможных ошибок, например, неизвестного типа пользователя
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Ошибка: ${e.toString()}')),
+    );
+  }
+}
+  
+  
 
   @override
+  
   Widget build(BuildContext context) {
+    
     return Scaffold(
       body: Container(
         
@@ -123,15 +173,14 @@ class AuthorizationScreenState extends State<AuthorizationScreen> {
               
               // Phone input field
               TextField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.white,
                   labelStyle: TextStyle(fontFamily: 'Light', fontWeight: FontWeight.w300,),
                   hintStyle: TextStyle(color:  Colors.black),
-                  labelText: 'Телефон',
-                   prefixText: '+7 ',
+                  labelText: 'Почта',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16.0),
                   ),
@@ -168,9 +217,7 @@ class AuthorizationScreenState extends State<AuthorizationScreen> {
               SizedBox(height: 24),
               // Login button
               ElevatedButton(
-                onPressed: () {
-                  // TODO: Implement login logic
-                },
+                onPressed: _login,
                 
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Color.fromARGB(255, 6, 98, 77),
