@@ -1,11 +1,14 @@
 // ignore_for_file: prefer_const_constructors
 
+import 'package:fitnessgo/map/mainmap.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:provider/provider.dart';
+
+import 'map/map_page.dart';
+import 'map/search_page.dart';
 
 
 class AddTrainingScreen extends StatefulWidget {
@@ -195,6 +198,18 @@ List<bool> _selectedCategories = List.filled(9, false);
                 );
               },
             ),
+            ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => MainPage()),
+                  );
+                },
+                child: Text('Выбрать место'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 50), // Width and height
+                ),
+              ),
               ElevatedButton(
                 onPressed: _submitForm,
                 child: Text('Сохранить'),

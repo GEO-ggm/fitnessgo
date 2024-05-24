@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path/path.dart' as Path;
 
-
 class StepScreen extends StatefulWidget {
   @override
   _StepScreenState createState() => _StepScreenState();
@@ -24,6 +23,8 @@ class _StepScreenState extends State<StepScreen> {
 
   void saveStep() async {
     if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+
       setState(() {
         _isUploading = true;
       });
@@ -53,27 +54,35 @@ class _StepScreenState extends State<StepScreen> {
   }
 
   Future<void> _pickVideo() async {
-    final pickedFile = await _picker.pickVideo(source: ImageSource.gallery);
-
-    setState(() {
-      if (pickedFile != null) {
-        _videoFile = File(pickedFile.path);
-      } else {
-        print('No video selected.');
-      }
-    });
+    try {
+      final pickedFile = await _picker.pickVideo(source: ImageSource.gallery);
+      setState(() {
+        if (pickedFile != null) {
+          _videoFile = File(pickedFile.path);
+          print('Video selected: ${pickedFile.path}');
+        } else {
+          print('No video selected.');
+        }
+      });
+    } catch (e) {
+      print('Error picking video: $e');
+    }
   }
 
   Future<void> _recordVideo() async {
-    final pickedFile = await _picker.pickVideo(source: ImageSource.camera);
-
-    setState(() {
-      if (pickedFile != null) {
-        _videoFile = File(pickedFile.path);
-      } else {
-        print('No video recorded.');
-      }
-    });
+    try {
+      final pickedFile = await _picker.pickVideo(source: ImageSource.camera);
+      setState(() {
+        if (pickedFile != null) {
+          _videoFile = File(pickedFile.path);
+          print('Video recorded: ${pickedFile.path}');
+        } else {
+          print('No video recorded.');
+        }
+      });
+    } catch (e) {
+      print('Error recording video: $e');
+    }
   }
 
   @override
@@ -91,20 +100,41 @@ class _StepScreenState extends State<StepScreen> {
               TextFormField(
                 decoration: InputDecoration(labelText: 'Наименование упражнения'),
                 onSaved: (value) => stepName = value!,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Пожалуйста, введите наименование';
+                  }
+                  return null;
+                },
               ),
               TextFormField(
                 decoration: InputDecoration(labelText: 'Количество подходов'),
                 keyboardType: TextInputType.number,
                 onSaved: (value) => sets = int.parse(value!),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Пожалуйста, введите количество подходов';
+                  }
+                  return null;
+                },
               ),
               TextFormField(
                 decoration: InputDecoration(labelText: 'Время (мин)'),
                 keyboardType: TextInputType.number,
                 onSaved: (value) => time = int.parse(value!),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Пожалуйста, введите время';
+                  }
+                  return null;
+                },
               ),
               SizedBox(height: 20),
               GestureDetector(
-                onTap: _pickVideo,
+                onTap: () {
+                  print('Upload video tapped');
+                  _pickVideo();
+                },
                 child: Column(
                   children: [
                     Icon(Icons.attach_file, size: 50),
@@ -112,12 +142,15 @@ class _StepScreenState extends State<StepScreen> {
                   ],
                 ),
               ),
-              SizedBox(height: 20),
+              SizedBox(height: 80),
               _videoFile == null
                   ? Text('Видео не выбрано.')
                   : Text('Видео выбрано: ${_videoFile!.path}'),
               ElevatedButton(
-                onPressed: _recordVideo,
+                onPressed: () {
+                  print('Record video tapped');
+                  _recordVideo();
+                },
                 child: Text('Записать видео'),
               ),
               SizedBox(height: 20),

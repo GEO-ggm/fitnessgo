@@ -1,7 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'meal.dart'; // Убедитесь, что у вас есть корректный импорт
-import 'meal_service.dart'; // Импортируйте MealService для работы с базой данных
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'meal.dart';
 
 class AddFoodScreen extends StatefulWidget {
   final String mealType;
@@ -13,94 +13,82 @@ class AddFoodScreen extends StatefulWidget {
 }
 
 class _AddFoodScreenState extends State<AddFoodScreen> {
-  final _formKey = GlobalKey<FormState>();
-  String foodName = '';
-  double foodWeight = 0;
-  int foodCalories = 0;
-  double foodProteins = 0;
-  double foodFats = 0;
-  double foodCarbs = 0;
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _proteinsController = TextEditingController();
+  final TextEditingController _fatsController = TextEditingController();
+  final TextEditingController _carbsController = TextEditingController();
+  final TextEditingController _servingSizeController = TextEditingController();
+  final TextEditingController _caloriesController = TextEditingController();
 
-  final MealService mealService = MealService();
+  Future<void> _addFoodItem() async {
+    String name = _nameController.text;
+    double proteins = double.tryParse(_proteinsController.text) ?? 0;
+    double fats = double.tryParse(_fatsController.text) ?? 0;
+    double carbs = double.tryParse(_carbsController.text) ?? 0;
+    int servingSize = int.tryParse(_servingSizeController.text) ?? 0;
+    int calories = int.tryParse(_caloriesController.text) ?? 0;
 
-  void saveFoodItem() async {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-      
-      final newMeal = Meal(
-        type: widget.mealType,
-        calories: foodCalories,
-        timestamp: Timestamp.now(),
-      );
+    FoodItem foodItem = FoodItem(
+      name: name,
+      proteins: proteins,
+      fats: fats,
+      carbs: carbs,
+      servingSize: servingSize,
+      calories: calories,
+    );
 
-      await mealService.addMeal(newMeal);
+    String uid = FirebaseAuth.instance.currentUser!.uid;
+    await FirebaseFirestore.instance.collection('Users').doc(uid).collection('Meals').add(foodItem.toFirestore());
 
-      Navigator.pop(context);
-    }
+    Navigator.pop(context, foodItem);
   }
 
   @override
   Widget build(BuildContext context) {
+    
     return Scaffold(
       appBar: AppBar(
-        title: Text('Новый продукт или блюдо'),
+        title: Text('Добавить продукт'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              TextFormField(
-                decoration: InputDecoration(labelText: 'Название'),
-                onSaved: (value) => foodName = value!,
-              ),
-              TextFormField(
-                decoration: InputDecoration(labelText: 'Количество/вес'),
-                keyboardType: TextInputType.number,
-                onSaved: (value) => foodWeight = double.parse(value!),
-              ),
-              TextFormField(
-                decoration: InputDecoration(labelText: 'Калорийность'),
-                keyboardType: TextInputType.number,
-                onSaved: (value) => foodCalories = int.parse(value!),
-              ),
-              TextFormField(
-                decoration: InputDecoration(labelText: 'Белки'),
-                keyboardType: TextInputType.number,
-                onSaved: (value) => foodProteins = double.parse(value!),
-              ),
-              TextFormField(
-                decoration: InputDecoration(labelText: 'Жиры'),
-                keyboardType: TextInputType.number,
-                onSaved: (value) => foodFats = double.parse(value!),
-              ),
-              TextFormField(
-                decoration: InputDecoration(labelText: 'Углеводы'),
-                keyboardType: TextInputType.number,
-                onSaved: (value) => foodCarbs = double.parse(value!),
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                child: Text('Сохранить'),
-                onPressed: saveFoodItem,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green, // background
-                  foregroundColor: Colors.white, // foreground
-                ),
-              ),
-              ElevatedButton(
-                child: Text('Удалить'),
-                onPressed: () {
-                  // Здесь код для удаления продукта
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red, // background
-                  foregroundColor: Colors.white, // foreground
-                ),
-              ),
-            ],
-          ),
+        child: Column(
+          children: <Widget>[
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(labelText: 'Название'),
+            ),
+            TextField(
+              controller: _proteinsController,
+              decoration: InputDecoration(labelText: 'Белки (г)'),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: _fatsController,
+              decoration: InputDecoration(labelText: 'Жиры (г)'),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: _carbsController,
+              decoration: InputDecoration(labelText: 'Углеводы (г)'),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: _servingSizeController,
+              decoration: InputDecoration(labelText: 'Размер порции (г)'),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: _caloriesController,
+              decoration: InputDecoration(labelText: 'Калории (ккал)'),
+              keyboardType: TextInputType.number,
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _addFoodItem,
+              child: Text('Добавить'),
+            ),
+          ],
         ),
       ),
     );

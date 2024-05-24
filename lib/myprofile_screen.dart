@@ -1,93 +1,183 @@
-// ignore_for_file: unused_import
+import 'dart:io';
 
 import 'package:fitnessgo/stat_screnn.dart';
 import 'package:flutter/material.dart';
-import 'add_food_screen.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:provider/provider.dart';
-import 'package:pedometer/pedometer.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:theme_provider/theme_provider.dart';
 import 'dart:async';
-import 'meal_service.dart';
-import 'meal.dart';
-
-// Определим класс MealInfo
-class MealInfo {
-  double proteins;
-  double fats;
-  double carbs;
-  int calories;
-
-  MealInfo({
-    this.proteins = 0.0,
-    this.fats = 0.0,
-    this.carbs = 0.0,
-    this.calories = 0,
-  });
-
-  void addFoodItem(FoodItem item) {
-    proteins += item.proteins;
-    fats += item.fats;
-    carbs += item.carbs;
-    calories += item.calories;
-  }
-
-  void reset() {
-    proteins = 0.0;
-    fats = 0.0;
-    carbs = 0.0;
-    calories = 0;
-  }
-}
+import 'food_details_screen.dart';
+import 'service_stream.dart';
+import 'package:health/health.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
 }
 
+enum AppState {
+  DATA_NOT_FETCHED,
+  FETCHING_DATA,
+  DATA_READY,
+  NO_DATA,
+  AUTHORIZED,
+  AUTH_NOT_GRANTED,
+  DATA_ADDED,
+  DATA_DELETED,
+  DATA_NOT_ADDED,
+  DATA_NOT_DELETED,
+  STEPS_READY,
+  HEALTH_CONNECT_STATUS,
+}
+
 class _ProfileScreenState extends State<ProfileScreen> {
+  List<HealthDataPoint> _healthDataList = [];
+  AppState _state = AppState.DATA_NOT_FETCHED;
+  User? currentUser;
+  double totalWater = 0;
+  List<double> weightData = [];
   String _photoUrl = '';
   String _fullName = '';
-  late Stream<StepCount> _stepCountStream;
-  String _steps = '0';
+ 
+ 
+  
+  int _nofSteps = 0;
   Timer? _timer;
-  int totalCalories = 0;
-  int breakfastCalories = 0;
-  int lunchCalories = 0;
-  int dinnerCalories = 0;
-
   final MealService mealService = MealService();
+  
+  static final types = [
+    HealthDataType.STEPS,
+    HealthDataType.AUDIOGRAM
+   ];
+   List<HealthDataAccess> get permissions =>
+      types.map((e) => HealthDataAccess.READ).toList();
+  
 
   @override
   void initState() {
+    Health().configure(useHealthConnectIfAvailable: true);
     super.initState();
     _loadUserProfile();
-    initPlatformState();
-    requestActivityRecognitionPermission();
-    mealService.deleteOldMeals();
-    mealService.getMeals().listen((meals) {
-      setState(() {
-        totalCalories = 0;
-        breakfastCalories = 0;
-        lunchCalories = 0;
-        dinnerCalories = 0;
+    currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      _loadData();
+    }
+  }
+  //Проверка наличия googleHealth на устройстве
+  Future<void> installHealthConnect() async {
+    await Health().installHealthConnect();
+  }
+  //Авторизация в googleHealth
+  Future<void> authorize() async {
+    await Permission.activityRecognition.request();
+    await Permission.location.request();
 
-        for (Meal meal in meals) {
-          if (meal.timestamp.toDate().day == DateTime.now().day) {
-            totalCalories += meal.calories;
-            if (meal.type == "breakfast") {
-              breakfastCalories += meal.calories;
-            } else if (meal.type == "lunch") {
-              lunchCalories += meal.calories;
-            } else if (meal.type == "dinner") {
-              dinnerCalories += meal.calories;
-            }
-          }
+    // Check if we have health permissions
+    bool? hasPermissions =
+        await Health().hasPermissions(types, permissions: permissions);
+      hasPermissions = false;
+      bool authorized = false;
+      if (!hasPermissions) {
+        // requesting access to the data types before reading them
+        try {
+          authorized = await Health()
+              .requestAuthorization(types, permissions: permissions);
+        } catch (error) {
+          debugPrint("Exception in authorize: $error");
         }
-      });
+      }
+      setState(() => _state =
+          (authorized) ? AppState.AUTHORIZED : AppState.AUTH_NOT_GRANTED);
+    }
+    Future<void> getHealthConnectSdkStatus() async {
+    assert(Platform.isAndroid, "This is only available on Android");
+
+    final status = await Health().getHealthConnectSdkStatus();
+
+    setState(() {
+      _state = AppState.HEALTH_CONNECT_STATUS;
     });
+  }
+  
+  Future<void> _loadData() async {
+    await _loadWaterData();
+    await _loadWeightData();
+  }
+  Future<void> fetchStepData() async {
+    int? steps;
+
+    // get steps for today (i.e., since midnight)
+    final now = DateTime.now();
+    final midnight = DateTime(now.year, now.month, now.day);
+
+    bool stepsPermission =
+        await Health().hasPermissions([HealthDataType.STEPS]) ?? false;
+    if (!stepsPermission) {
+      stepsPermission =
+          await Health().requestAuthorization([HealthDataType.STEPS]);
+    }
+
+    if (stepsPermission) {
+      try {
+        steps = await Health().getTotalStepsInInterval(midnight, now);
+      } catch (error) {
+        debugPrint("Exception in getTotalStepsInInterval: $error");
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Total number of steps: $steps, nofsteps $_nofSteps')),
+      );
+      debugPrint('Total number of steps: $steps');
+
+      setState(() {
+        _nofSteps = (steps == null) ? 0 : steps;
+        _state = (steps == null) ? AppState.NO_DATA : AppState.STEPS_READY;
+      });
+    } else {
+      debugPrint("Authorization not granted - error in authorization");
+      setState(() => _state = AppState.DATA_NOT_FETCHED);
+    }
+  }
+  
+
+  
+
+  Future<void> _loadWaterData() async {
+    if (currentUser == null) return;
+
+    final doc = await FirebaseFirestore.instance.collection('Users').doc(currentUser!.uid).get();
+    if (doc.exists) {
+      final data = doc.data();
+      final waterTimestamp = data?['waterTimestamp']?.toDate() ?? DateTime.now();
+      final currentTime = DateTime.now();
+
+      if (_isSameDay(waterTimestamp, currentTime)) {
+        setState(() {
+          totalWater = data?['totalWater'] ?? 0;
+        });
+      } else {
+        setState(() {
+          totalWater = 0;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadWeightData() async {
+    if (currentUser == null) return;
+
+    final doc = await FirebaseFirestore.instance.collection('Users').doc(currentUser!.uid).get();
+    if (doc.exists) {
+      setState(() {
+        weightData = List<double>.from(doc.data()?['weightData'] ?? []);
+      });
+    }
+  }
+
+  bool _isSameDay(DateTime date1, DateTime date2) {
+    return date1.year == date2.year && date1.month == date2.month && date1.day == date2.day;
   }
 
   @override
@@ -96,13 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
-  Future<void> requestActivityRecognitionPermission() async {
-    if (await Permission.activityRecognition.request().isGranted) {
-      initPlatformState();
-    } else {
-      print("Permission denied");
-    }
-  }
+  
 
   Future<void> _loadUserProfile() async {
     try {
@@ -125,35 +209,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void onStepCount(StepCount event) {
-    setState(() {
-      _steps = event.steps.toString();
-    });
-  }
+  
 
-  void onStepCountError(error) {
-    print('Step Count Error: $error');
-  }
 
-  void initPlatformState() {
-    _stepCountStream = Pedometer.stepCountStream;
-    _stepCountStream.listen(onStepCount).onError(onStepCountError);
-  }
+  
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final theme = ThemeProvider.themeOf(context).data;
+    return ThemeConsumer(
+    child: Scaffold(
       body: ListView(
         children: <Widget>[
-          _buildProfileSection(context),
-          _buildSummarySection(context),
-          _buildNutritionSection(context),
+          _buildProfileSection(context, theme),
+          _buildSummarySection(context, theme),
+          _buildMealsSection(context, theme),
+          _buildCaloriesSection(context, theme), // Добавляем новый раздел
         ],
       ),
+    )
     );
   }
 
-  Widget _buildProfileSection(BuildContext context) {
+  Widget _buildProfileSection(BuildContext context, ThemeData theme) {
     return Container(
       padding: EdgeInsets.only(top: 38, bottom: 24, left: 16, right: 16),
       child: Row(
@@ -165,35 +243,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
             backgroundImage: _photoUrl.isNotEmpty ? NetworkImage(_photoUrl) : null,
             child: _photoUrl.isEmpty ? Icon(Icons.camera_alt, size: 50) : null,
           ),
-          Text(_fullName, style: TextStyle(fontSize: 24)),
+          Text(_fullName, style: TextStyle(fontSize: 24, color: theme.textTheme.bodyLarge?.color)),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryItem(String title, String value) {
+  Widget _buildSummaryItem(String title, String value, ThemeData theme) {
+    
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
+        Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: theme.textTheme.bodyLarge?.color)),
         SizedBox(height: 4),
-        Text(value),
+        Text(value, style: TextStyle(color: theme.textTheme.bodyLarge?.color)),
       ],
     );
   }
 
-  Widget _buildSummarySection(BuildContext context) {
-    return InkWell(
+  Widget _buildSummarySection(BuildContext context, ThemeData theme) {
+    return ThemeConsumer(
+      child: InkWell(
       onTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => StatsScreen()),
+          MaterialPageRoute(builder: (_) => StatScreen()),
         );
       },
       child: Container(
         padding: const EdgeInsets.all(13.0),
         margin: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: Color.fromARGB(255, 6, 98, 77),
@@ -211,31 +291,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.start,
             children: <Widget>[
-              _buildSummaryCard(context, 'assets/icons/water.svg', 'Вода', '2 L'),
-              _buildSummaryCard(context, 'assets/icons/steps.svg', 'Шаги', _steps),
-              _buildSummaryCard(context, 'assets/icons/weightloc.svg', 'Вес', '66 кг'),
+              _buildSummaryCard(context, 'assets/icons/water.svg', 'Вода', mealService.getWaterStream(), 'Л',),
+              _buildSummaryCard(context, 'assets/icons/steps.svg', 'Шаги', Stream.value(_nofSteps), ''),
+              _buildSummaryCard(context, 'assets/icons/weightloc.svg', 'Вес', mealService.getWeightStream(), 'Кг'),
+              TextButton(onPressed: fetchStepData, child: Text("Fetch Step Data",
+                          style: TextStyle(color: Colors.white)),
+                      style: ButtonStyle(
+                          backgroundColor:
+                              MaterialStatePropertyAll(Colors.blue))),
             ],
           ),
         ),
+        
+      ),
       ),
     );
   }
 
-  Widget _buildSummaryCard(BuildContext context, String iconPath, String title, String value) {
+  Widget _buildSummaryCard(BuildContext context, String iconPath, String title, Stream<dynamic> valueStream, String text, ) {
     return Expanded(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          SvgPicture.asset(iconPath, width: 30, height: 30),
-          SizedBox(height: 8),
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
-          Text(value, style: Theme.of(context).textTheme.titleSmall),
-        ],
+      child: StreamBuilder<dynamic>(
+        stream: valueStream,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                SvgPicture.asset(iconPath, width: 30, height: 30),
+                SizedBox(height: 8),
+                Text(title, style: Theme.of(context).textTheme.titleLarge),
+                Text('Загрузка...', style: Theme.of(context).textTheme.titleSmall),
+              ],
+            );
+          }
+          String value = '';
+          if (snapshot.data is double) {
+            value = (snapshot.data as double).toStringAsFixed(1);
+          } else if (snapshot.data is String) {
+            value = snapshot.data as String;
+          } else if (snapshot.data is int) {
+            value = snapshot.data.toString();
+          } else if (snapshot.data is List<double> && (snapshot.data as List<double>).isNotEmpty) {
+            value = (snapshot.data as List<double>).last.toStringAsFixed(0);
+          }
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              SvgPicture.asset(iconPath, width: 30, height: 30),
+              SizedBox(height: 8),
+              Text(title, style: Theme.of(context).textTheme.titleLarge),
+              Text(value, style: Theme.of(context).textTheme.titleSmall),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildNutritionSection(BuildContext context) {
+  Widget _buildMealsSection(BuildContext context, ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -243,34 +356,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Text(
             'Ваше питание',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w300),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w300, color: theme.textTheme.bodyLarge?.color),
           ),
+         
         ),
         SizedBox(height: 16),
         Row(
+          
+          
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            _buildMealCard(context, 'Завтрак', '$breakfastCalories ккал'),
-            _buildMealCard(context, 'Обед', '$lunchCalories ккал'),
-            _buildMealCard(context, 'Ужин', '$dinnerCalories ккал'),
+            _buildMealCard(context, 'Завтрак', theme),
+            _buildMealCard(context, 'Обед', theme),
+            _buildMealCard(context, 'Ужин', theme),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildMealCard(BuildContext context, String mealName, String calories) {
+  Widget _buildMealCard(BuildContext context, String mealName, ThemeData theme) {
     return InkWell(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => FoodDetailsScreen(mealName: mealName)),
+          MaterialPageRoute(builder: (context) => FoodDetailsScreen(mealType: mealName)),
         );
       },
       child: Container(
         margin: const EdgeInsets.all(2.0),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(12.0),
           border: Border.all(
             color: Color.fromARGB(255, 6, 98, 77),
@@ -286,7 +402,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         child: Card(
           elevation: 0,
-          color: Colors.white,
+          color: theme.cardColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -296,8 +412,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(mealName, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                SizedBox(height: 4),
-                Text(calories, style: TextStyle(fontSize: 16)),
               ],
             ),
           ),
@@ -305,194 +419,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-}
 
-class FoodDetailsScreen extends StatefulWidget {
-  final String mealName;
+  Widget _buildCaloriesSection(BuildContext context, ThemeData theme) {
+    return StreamBuilder<Map<String, int>>(
+      stream: mealService.getCaloriesStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return CircularProgressIndicator();
+        }
 
-  FoodDetailsScreen({required this.mealName});
+        if (snapshot.hasError) {
+          return Text('Error: ${snapshot.error}');
+        }
 
-  @override
-  _FoodDetailsScreenState createState() => _FoodDetailsScreenState();
-}
+        if (!snapshot.hasData) {
+          return Text('Нет данных');
+        }
 
-class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
-  MealInfo currentMealInfo = MealInfo();
-  final MealService mealService = MealService();
-  double totalProteins = 0;
-  double totalFats = 0;
-  double totalCarbs = 0;
-  int totalCalories = 0;
-  List<FoodItem> foodItems = [];
+        final caloriesByMealType = snapshot.data!;
 
-  @override
-  void initState() {
-    super.initState();
-    mealService.getMeals().listen((meals) {
-      setState(() {
-        // Преобразуем объекты Meal в объекты FoodItem
-        
-        _updateNutritionValues();
-      });
-    });
-  }
-
-  void _updateNutritionValues() {
-    totalProteins = foodItems.fold(0, (sum, item) => sum + item.proteins);
-    totalFats = foodItems.fold(0, (sum, item) => sum + item.fats);
-    totalCarbs = foodItems.fold(0, (sum, item) => sum + item.carbs);
-    totalCalories = foodItems.fold(0, (sum, item) => sum + item.calories);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    _updateNutritionValues();
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.mealName),
-      ),
-      body: Column(
-        children: <Widget>[
-          _buildNutritionInfoRow(currentMealInfo),
-          Expanded(
-            child: ListView.builder(
-              itemCount: foodItems.length,
-              itemBuilder: (context, index) {
-                return _buildNutritionItemCard(
-                  foodItems[index].name,
-                  '${foodItems[index].proteins.toStringAsFixed(1)}г',
-                  '${foodItems[index].fats.toStringAsFixed(1)}г',
-                  '${foodItems[index].carbs.toStringAsFixed(1)}г',
-                  '${foodItems[index].servingSize}г',
-                  '${foodItems[index].calories} ккал',
-                );
-              },
-            ),
+        return Container(
+          margin: EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+          padding: EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+            color: Color.fromARGB(255, 6, 98, 77),
+            width: 2.0,
           ),
-          SizedBox(height: 80),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => AddFoodScreen(mealType: widget.mealName),
-            ),
-          );
-          if (result != null && result is FoodItem) {
-            setState(() {
-              foodItems.add(result);
-              currentMealInfo.addFoodItem(result);
-              _updateNutritionValues();
-
-              // Добавляем новый прием пищи в базу данных
-              
-            });
-          }
-        },
-        label: Text('Добавить продукт'),
-        icon: Icon(Icons.add),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      bottomNavigationBar: BottomAppBar(
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            minimumSize: Size(double.infinity, 50),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.2),
+                spreadRadius: 2,
+                blurRadius: 4,
+              ),
+            ],
           ),
-          onPressed: () {
-            // TODO: Добавить логику сохранения питания
-          },
-          child: Text('Сохранить', style: TextStyle(color: Colors.white)),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNutritionInfoRow(MealInfo mealInfo) {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 6,
-            offset: Offset(0, 2),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Калории за сегодня', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w300)),
+              SizedBox(height: 16),
+              _buildCaloriesRow('Завтрак', caloriesByMealType['Завтрак'] ?? 0),
+              _buildCaloriesRow('Обед', caloriesByMealType['Обед'] ?? 0),
+              _buildCaloriesRow('Ужин', caloriesByMealType['Ужин'] ?? 0),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: <Widget>[
-          _buildNutrientColumn('Белки', '${mealInfo.proteins.toStringAsFixed(1)}г'),
-          _buildNutrientColumn('Жиры', '${mealInfo.fats.toStringAsFixed(1)}г'),
-          _buildNutrientColumn('Углеводы', '${mealInfo.carbs.toStringAsFixed(1)}г'),
-          _buildNutrientColumn('Ккал', '${mealInfo.calories}'),
-        ],
-      ),
+        );
+      },
     );
+    
   }
 
-  Widget _buildNutrientColumn(String nutrient, String value) {
-    return Expanded(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(nutrient, style: TextStyle(fontWeight: FontWeight.bold)),
-          Text(value),
-        ],
-      ),
+  Widget _buildCaloriesRow(String mealType, int calories) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(mealType, style: TextStyle(fontSize: 18)),
+        Text('$calories ккал', style: TextStyle(fontSize: 18)),
+      ],
+      
     );
+    
   }
-
-  Card _buildNutritionInfoCard(String nutrient, String value) {
-    return Card(
-      margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: ListTile(
-        title: Text(nutrient),
-        trailing: Text(value),
-      ),
-    );
-  }
-
-  Card _buildNutritionItemCard(String name, String proteins, String fats, String carbs, String serving, String calories) {
-    return Card(
-      margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(name),
-            Text(proteins),
-            Text(fats),
-            Text(carbs),
-            Text(serving),
-            Text(calories),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class FoodItem {
-  String name;
-  double proteins;
-  double fats;
-  double carbs;
-  int servingSize;
-  int calories;
-
-  FoodItem({
-    required this.name,
-    required this.proteins,
-    required this.fats,
-    required this.carbs,
-    required this.servingSize,
-    required this.calories,
-  });
+  
 }

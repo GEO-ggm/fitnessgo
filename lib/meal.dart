@@ -1,43 +1,49 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Meal {
-  final String type;
+  final String name;
+  final double proteins;
+  final double fats;
+  final double carbs;
   final int calories;
   final Timestamp timestamp;
+  final String type;
 
-  Meal({required this.type, required this.calories, required this.timestamp});
+  Meal({
+    required this.name,
+    required this.proteins,
+    required this.fats,
+    required this.carbs,
+    required this.calories,
+    required this.timestamp,
+    required this.type,
+  });
 
-  // Метод для преобразования Meal в FoodItem
-  FoodItem toFoodItem() {
-    return FoodItem(
-      name: type,
-      proteins: 0, // Замените на реальные данные, если они у вас есть
-      fats: 0, // Замените на реальные данные, если они у вас есть
-      carbs: 0, // Замените на реальные данные, если они у вас есть
-      servingSize: 0, // Замените на реальные данные, если они у вас есть
-      calories: calories,
-    );
-  }
-
-  // Метод для создания объекта Meal из документа Firestore
-  factory Meal.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    return Meal(
-      type: data['type'] ?? '',
-      calories: data['calories'] ?? 0,
-      timestamp: data['timestamp'] ?? Timestamp.now(),
-    );
-  }
-
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toFirestore() {
     return {
-      'type': type,
+      'name': name,
+      'proteins': proteins,
+      'fats': fats,
+      'carbs': carbs,
       'calories': calories,
       'timestamp': timestamp,
+      'type': type,
     };
   }
+  
+  static Meal fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    return Meal(
+      name: data['name'] ?? 'Unknown',
+      proteins: (data['proteins'] ?? 0).toDouble(),
+      fats: (data['fats'] ?? 0).toDouble(),
+      carbs: (data['carbs'] ?? 0).toDouble(),
+      calories: data['calories'] ?? 0,
+      timestamp: data['timestamp'] ?? Timestamp.now(),
+      type: data['type'] ?? 'Unknown',
+    );
+  }
 }
-
 class FoodItem {
   final String name;
   final double proteins;
@@ -54,4 +60,50 @@ class FoodItem {
     required this.servingSize,
     required this.calories,
   });
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'name': name,
+      'proteins': proteins,
+      'fats': fats,
+      'carbs': carbs,
+      'servingSize': servingSize,
+      'calories': calories,
+    };
+  }
+
+  static FoodItem fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    return FoodItem(
+      name: data['name'],
+      proteins: data['proteins'],
+      fats: data['fats'],
+      carbs: data['carbs'],
+      servingSize: data['servingSize'],
+      calories: data['calories'],
+    );
+  }
+  Meal toMeal(String type) {
+    return Meal(
+      name: name,
+      proteins: proteins,
+      fats: fats,
+      carbs: carbs,
+      calories: calories,
+      timestamp: Timestamp.now(),
+      type: type,
+    );
+  }
+
+  static FoodItem fromMeal(Meal meal) {
+    return FoodItem(
+      name: meal.name,
+      proteins: meal.proteins,
+      fats: meal.fats,
+      carbs: meal.carbs,
+      servingSize: 0, // Если у вас нет этого параметра в Meal, установите значение по умолчанию
+      calories: meal.calories,
+    );
+  }
 }
+

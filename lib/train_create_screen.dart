@@ -107,10 +107,12 @@ class _TrainerWorkoutScreenState extends State<TrainerWorkoutScreen> {
                       ),
                     ],
                   ),
+                  
                   child: ListTile(
                     title: Text(data['title']),
                     subtitle: Text("${DateFormat('dd.MM.yyyy HH:mm').format(data['date'].toDate())} - Вместимость: ${data['capacity']}"),
                   ),
+               
                 ),
               );
             },

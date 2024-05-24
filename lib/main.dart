@@ -13,15 +13,16 @@ import 'glav_screen.dart';
 import 'glav_screen_athl.dart';
 import 'main_set_category_screen.dart';
 import 'package:provider/provider.dart';
-import 'ThemeNotifier.dart';
 import 'settings_screen.dart';
+import 'package:theme_provider/theme_provider.dart';
+import 'package:yandex_mapkit/yandex_mapkit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
+  
   bool isLoggedIn = await checkLoginStatus();
-  String userType = isLoggedIn ? await getUserType() : '';
+  String? userType = isLoggedIn ? await getUserType() : null;
 
   runApp(
     ChangeNotifierProvider(
@@ -30,44 +31,77 @@ void main() async {
     ),
   );
 }
-
 Future<bool> checkLoginStatus() async {
   final prefs = await SharedPreferences.getInstance();
   return prefs.containsKey('user_token');
 }
 
-Future<String> getUserType() async {
+
+Future<String?> getUserType() async {
   final prefs = await SharedPreferences.getInstance();
   String? uid = prefs.getString('user_token');
   if (uid == null) {
-    return '';
+    return null;
   }
-  DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('Users').doc(uid).get();
-  return userDoc['role'];
+  
+  try {
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('Users').doc(uid).get();
+
+    if (!userDoc.exists) {
+      return null; // Возвращаем null, если документ не существует
+    }
+
+    final data = userDoc.data() as Map<String, dynamic>?; // Приводим данные к Map<String, dynamic> если возможно
+    if (data == null || !data.containsKey('role')) {
+      return null; // Возвращаем null, если данные отсутствуют или поле 'role' не существует
+    }
+
+    return data['role'] as String?;
+  } catch (e) {
+    // Логируем ошибку для отладки
+    print('Error getting user type: $e');
+    // Возвращаем null, если произошла ошибка
+    return null;
+  }
 }
 
 class MyApp extends StatelessWidget {
   final bool isLoggedIn;
-  final String userType;
+  final String? userType;
 
   MyApp({required this.isLoggedIn, required this.userType});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ThemeNotifier>(
-      builder: (context, themeNotifier, child) {
-        return MaterialApp(
+    return ThemeProvider(
+       saveThemesOnChange: true,
+      loadThemeOnInit: true,
+      themes: [
+          AppTheme(
+          id: 'light_theme',
+          description: 'Light Theme',
+          data: ThemeData.light(),
+        ),
+         AppTheme(
+          id: 'dark_theme',
+          description: 'Dark Theme',
+          data: ThemeData.dark(),
+        ),
+      ],
+      child: ThemeConsumer(
+         child: Builder(
+        builder: (themeContext) => MaterialApp(
           debugShowCheckedModeBanner: false,
-          theme: themeNotifier.isDarkTheme ? ThemeData.dark() : ThemeData.light(),
-          home: isLoggedIn
+          theme: ThemeProvider.themeOf(themeContext).data,
+           home: isLoggedIn && userType != null
               ? (userType == 'Тренер' ? CoachProfileScreen() : AthleteProfileScreen())
               : AuthorizationScreen(),
-        );
-      },
+        ),
+        ),
+      ),
     );
   }
 }
-
 class ThemeNotifier extends ChangeNotifier {
   bool _isDarkTheme = false;
 
@@ -90,6 +124,8 @@ class AuthorizationScreenState extends State<AuthorizationScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordHidden = true;
+
+
 
   Future<void> _login() async {
     try {
@@ -123,7 +159,7 @@ class AuthorizationScreenState extends State<AuthorizationScreen> {
       }
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка входа: ${e.message}')),
+        SnackBar(content: Text('Ошибка входа: неверный логин или пароль.')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

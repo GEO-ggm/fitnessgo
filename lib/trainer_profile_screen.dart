@@ -124,9 +124,9 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
       ),
       child: Column(
         children: <Widget>[
-          _buildStatRow('Kursi', _courseCount.toString()),
-          _buildStatRow('Rating', _rating.toString()),
-          _buildStatRow('Trainers', _trainingCount.toString(), isIncrementable: true),
+          _buildStatRow('Курсы', _courseCount.toString()),
+          _buildStatRow('Рейтинг', _rating.toString()),
+          _buildStatRow('Тренировки', _trainingCount.toString(), isIncrementable: true),
         ],
       ),
     );

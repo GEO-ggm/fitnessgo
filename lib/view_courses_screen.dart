@@ -2,6 +2,7 @@ import 'package:fitnessgo/course_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:theme_provider/theme_provider.dart';
 
 class CoursesScreen extends StatefulWidget {
   @override
@@ -20,6 +21,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = ThemeProvider.themeOf(context).data;
     return Scaffold(
       appBar: AppBar(
         title: Text('Курсы'),

@@ -11,6 +11,7 @@ import 'package:fitnessgo/myprofile_screen.dart';
 import 'package:fitnessgo/notify_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:theme_provider/theme_provider.dart';
 import 'settings_screen.dart';
 import 'package:provider/provider.dart';
 
@@ -67,8 +68,9 @@ class _BottomNavigationBarExampleState
   @override
   Widget build(BuildContext context) {
     
-    
-    return Scaffold(
+    final theme = ThemeProvider.themeOf(context).data;
+    return ThemeConsumer(
+      child: Scaffold(
       appBar: AppBar(
         title: Text('FitnessGO'),
         actions: _selectedIndex == 4 // Проверка, выбран ли экран профиля
@@ -96,6 +98,7 @@ class _BottomNavigationBarExampleState
                 ),
               ],
       ),
+      
             
             
       
@@ -109,35 +112,38 @@ class _BottomNavigationBarExampleState
           BottomNavigationBarItem(
             icon: SvgPicture.asset('assets/icons/Chat.svg', width: 34,),
             label: 'Чаты',
-            backgroundColor: Colors.white,
+           
             
           ),
           BottomNavigationBarItem(
             icon: SvgPicture.asset('assets/icons/Calendar.svg', width: 34,),
             label: 'календарь',
-            backgroundColor: Colors.white,
+            
           ),
           BottomNavigationBarItem(
             icon: SvgPicture.asset('assets/icons/logo.svg', width: 34,),
             label: 'Главная',
-            backgroundColor: Colors.white,
+            
           ),
           BottomNavigationBarItem(
             icon: SvgPicture.asset('assets/icons/Weight.svg', width: 34,),
             label: 'Тренировки',
-            backgroundColor:Colors.white,
+            
           ),
           BottomNavigationBarItem(
             icon: SvgPicture.asset('assets/icons/3User.svg', width: 34,),
             label: 'Личное',
-            backgroundColor: Colors.white,
+            
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.black,
+        selectedItemColor: theme.brightness == Brightness.dark ? Colors.white : Colors.black,
+        unselectedItemColor: theme.brightness == Brightness.dark ? Colors.grey : Colors.black54,
         onTap: _onItemTapped,
       ),
+      ),
     );
+
   }
 }
 

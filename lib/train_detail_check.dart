@@ -7,6 +7,7 @@ import 'package:yandex_mapkit/yandex_mapkit.dart';
 import 'api_keys.dart';  // Импортируем файл с ключом
 
 class TrainDetailCheck extends StatelessWidget {
+
   final String trainingId;
   late final List<MapObject> mapObjects = [
     startPlacemark,

@@ -9,11 +9,26 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter/services.dart';
+import 'package:theme_provider/theme_provider.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
+  @override
+  _SettingsScreenState createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  late BuildContext _currentContext;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _currentContext = context;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return ThemeConsumer(
+      child: Scaffold(
       appBar: AppBar(
         title: Text('Настройки', style: GoogleFonts.poppins()),
       ),
@@ -37,14 +52,14 @@ class SettingsScreen extends StatelessWidget {
                   icon: Icon(Icons.nights_stay, color: Colors.blueGrey),
                   iconSize: 30.0,
                   onPressed: () {
-                    Provider.of<ThemeNotifier>(context, listen: false).setDarkTheme(true);
+                    ThemeProvider.controllerOf(context).setTheme('dark_theme');
                   },
                 ),
                 IconButton(
                   icon: Icon(Icons.wb_sunny, color: Colors.orange),
                   iconSize: 30.0,
                   onPressed: () {
-                    Provider.of<ThemeNotifier>(context, listen: false).setDarkTheme(false);
+                    ThemeProvider.controllerOf(context).setTheme('light_theme');
                   },
                 ),
               ],
@@ -117,9 +132,8 @@ class SettingsScreen extends StatelessWidget {
                         child: Text('Да', style: GoogleFonts.poppins()),
                         onPressed: () async {
                           final String password = passwordController.text;
-                          final currentContext = context;
                           Navigator.of(context).pop(); // Закрыть диалоговое окно
-                          await _deleteAccount(currentContext, password); // Используем текущий контекст и введенный пароль
+                          await _deleteAccount(_currentContext, password); // Используем сохраненный контекст и введенный пароль
                         },
                       ),
                     ],
@@ -129,6 +143,7 @@ class SettingsScreen extends StatelessWidget {
             }),
           ],
         ),
+      ),
       ),
     );
   }
@@ -158,8 +173,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-
-Future<void> _deleteAccount(BuildContext context, String password) async {
+  Future<void> _deleteAccount(BuildContext context, String password) async {
     final FirebaseAuth _auth = FirebaseAuth.instance;
     User? user = _auth.currentUser;
 
@@ -192,8 +206,11 @@ Future<void> _deleteAccount(BuildContext context, String password) async {
         SnackBar(content: Text('Аккаунт успешно удален')),
       );
 
-      // close
-      SystemNavigator.pop();
+      // start screen
+       Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => AuthorizationScreen()),
+        (Route<dynamic> route) => false,
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Ошибка: ${e.toString()}')),

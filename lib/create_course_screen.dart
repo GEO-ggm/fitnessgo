@@ -1,9 +1,14 @@
+import 'dart:io';
+
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:fitnessgo/step_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import 'step_screen.dart'; 
 import 'course.dart';
+import 'package:path/path.dart' as Path;
 
 
 class CreateCourseScreen extends StatefulWidget {
@@ -117,6 +122,10 @@ class _CreateStageScreenState extends State<CreateStageScreen> {
   int sets = 0;
   int duration = 0;
   String videoUrl = '';
+  
+  File? _videoFile;
+  final ImagePicker _picker = ImagePicker();
+  bool _isUploading = false;
 
   void saveStage() async {
     if (_formKey.currentState!.validate()) {
@@ -134,12 +143,30 @@ class _CreateStageScreenState extends State<CreateStageScreen> {
     }
   }
 
-  void uploadVideo() async {
-    // Реализуйте логику загрузки видео в Firestore и получите videoUrl
-    // После успешной загрузки, обновите переменную videoUrl
-    // Пример:
-    // videoUrl = await uploadVideoToFirestore();
+   Future<String> _uploadVideo(File videoFile) async {
+    String fileName = Path.basename(videoFile.path);
+    Reference storageReference = FirebaseStorage.instance.ref().child('videos/$fileName');
+    UploadTask uploadTask = storageReference.putFile(videoFile);
+    await uploadTask.whenComplete(() => null);
+    String videoUrl = await storageReference.getDownloadURL();
+    return videoUrl;
   }
+  Future<void> _pickVideo() async {
+    try {
+      final pickedFile = await _picker.pickVideo(source: ImageSource.gallery);
+      setState(() {
+        if (pickedFile != null) {
+          _videoFile = File(pickedFile.path);
+          print('Video selected: ${pickedFile.path}');
+        } else {
+          print('No video selected.');
+        }
+      });
+    } catch (e) {
+      print('Error picking video: $e');
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -168,21 +195,23 @@ class _CreateStageScreenState extends State<CreateStageScreen> {
                 onSaved: (value) => duration = int.parse(value!),
               ),
               SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: uploadVideo,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+              GestureDetector(
+                onTap: _pickVideo,
+                child: Column(
                   children: [
-                    Icon(Icons.attach_file),
-                    SizedBox(width: 8),
-                    Text('Загрузить видео'),
+                    Icon(Icons.attach_file, size: 50),
+                    Text('Вы также можете добавить видео'),
                   ],
                 ),
               ),
               SizedBox(height: 20),
+              _videoFile == null
+                  ? Text('Видео не выбрано.')
+                  : Text('Видео выбрано: ${_videoFile!.path}'),
+              SizedBox(height: 20),
               ElevatedButton(
-                onPressed: saveStage,
-                child: Text('Сохранить этап'),
+                onPressed: _isUploading ? null : saveStage,
+                child: _isUploading ? CircularProgressIndicator() : Text('Сохранить этап'),
               ),
             ],
           ),

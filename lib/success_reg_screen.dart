@@ -1,9 +1,47 @@
 // ignore_for_file: prefer_const_constructors
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fitnessgo/glav_screen.dart';
+import 'package:fitnessgo/glav_screen_athl.dart';
 import 'package:flutter/material.dart';
 
 class RegistrationCompleteScreen extends StatelessWidget {
+ 
+ Future<String> getUserRole() async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser.uid)
+          .get();
+      return userDoc['role'] ?? '';
+    }
+    return '';
+  }
+ 
+ 
+ 
+ 
+  void navigateToProfile(BuildContext context, String role) {
+    if (role == 'Тренер') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => CoachProfileScreen()),
+      );
+    } else if (role == 'Спортсмен') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => AthleteProfileScreen()),
+      );
+    } else {
+      // Обработайте случай, когда роль не определена
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось определить роль пользователя')),
+      );
+    }
+  }
+
   
   @override
   Widget build(BuildContext context) {
@@ -40,12 +78,11 @@ class RegistrationCompleteScreen extends StatelessWidget {
             Spacer(), // Используется для того, чтобы кнопка была внизу экрана
             ElevatedButton(
               child: Text('Вперед!'),
-              onPressed: () {
-                 Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => CoachProfileScreen()),
-                 );
-                // Обработчик нажатия на кнопку
+              onPressed: () async {
+                String role = await getUserRole();
+                navigateToProfile(context, role);
+              
+               
               },
               style: ElevatedButton.styleFrom(
                 minimumSize: Size.fromHeight(50), // Задаём минимальную высоту для кнопки
