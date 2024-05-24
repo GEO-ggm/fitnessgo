@@ -8,6 +8,7 @@ import 'main_set_info_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 
 // Список категорий и соответствующих им эмодзи
 final List<Map<String, dynamic>> fitnessCategories = [

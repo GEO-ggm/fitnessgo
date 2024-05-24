@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'onChat_field_screen.dart';
+import 'package:provider/provider.dart';
 
 String getChatId(String userId1, String userId2) {
   return userId1.hashCode <= userId2.hashCode

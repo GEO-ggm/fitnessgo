@@ -12,6 +12,9 @@ import 'package:fitnessgo/notify_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'train_create_screen.dart';
+import 'package:provider/provider.dart';
+import 'settings_screen.dart';
+import 'trainer_profile_screen.dart';
 
 
 
@@ -51,7 +54,7 @@ class _BottomNavigationBarExampleState
     ScheduleScreen(),
     MainMenuScreen(),
     TrainerWorkoutScreen(),
-    ProfileScreen(),
+    TrainerProfileScreen(),
   ];
   
   
@@ -68,23 +71,31 @@ class _BottomNavigationBarExampleState
     
     return Scaffold(
       appBar: AppBar(
-         // Иконка для возвращения на предыдущий экран
-        title: Text("FitnessGo",
-        style: TextStyle(fontWeight: FontWeight.w300, fontFamily: 'Montserrat'),
-        ), // Название приложения или логотип
-        actions: [
-          IconButton(
-            icon: Icon(Icons.notifications),
-            onPressed: () {
-                      
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_)=>NotificationsScreen()),
-              );
-            
-            
-            },
-          ),
-        ]
+        title: Text('FitnessGO'),
+        actions: _selectedIndex == 4 // Проверка, выбран ли экран профиля
+            ? <Widget>[
+                IconButton(
+                  icon: Icon(Icons.settings),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => SettingsScreen()),
+                    );
+                  },
+                ),
+              ]
+
+            : <Widget>[
+                IconButton(
+                  icon: Icon(Icons.notifications),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => NotificationsScreen()),
+                    );
+                  },
+                ),
+              ],
       ),
       
       body: IndexedStack(

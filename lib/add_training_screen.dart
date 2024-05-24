@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 
 
 class AddTrainingScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class _AddTrainingScreenState extends State<AddTrainingScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   int _capacity = 1;
   DateTime _selectedDate = DateTime.now();
+  TimeOfDay _selectedTime = TimeOfDay.now();
   final List<Map<String, dynamic>> fitnessCategories = [
   {'name': 'Йога', 'icon': 'assets/icons/yoga.svg'},
   {'name': 'Силовые', 'icon': 'assets/icons/sila.svg'},
@@ -32,12 +34,21 @@ class _AddTrainingScreenState extends State<AddTrainingScreen> {
 List<bool> _selectedCategories = List.filled(9, false);
 
   void _submitForm() {
+    final DateTime fullDateTime = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
+        _selectedTime.hour,
+        _selectedTime.minute,
+    );
+    final Timestamp trainingTimestamp = Timestamp.fromDate(fullDateTime);
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null && _nameController.text.isNotEmpty) {
+    
     final trainingData = {
         'title': _nameController.text,
         'description': _descriptionController.text,
-        'date': _selectedDate,
+        'date':  trainingTimestamp,
         'capacity': _capacity,
         'categories': fitnessCategories
             .where((category) => _selectedCategories[fitnessCategories.indexOf(category)])
@@ -63,6 +74,19 @@ List<bool> _selectedCategories = List.filled(9, false);
       });
     }
   }
+
+  Future<void> _selectTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+        context: context,
+        initialTime: _selectedTime,
+    );
+    if (picked != null && picked != _selectedTime) {
+        setState(() {
+            _selectedTime = picked;
+        });
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -94,6 +118,12 @@ List<bool> _selectedCategories = List.filled(9, false);
                 trailing: Icon(Icons.calendar_today),
                 onTap: () => _selectDate(context),
               ),
+              ListTile(
+              title: Text("Время тренировки: ${_selectedTime.format(context)}"),
+              trailing: Icon(Icons.timer),
+              onTap: () => _selectTime(context),
+            ),
+
 
               Row(
                 children: [

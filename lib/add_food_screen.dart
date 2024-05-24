@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'myprofile_screen.dart';
+import 'meal.dart'; // Убедитесь, что у вас есть корректный импорт
+import 'meal_service.dart'; // Импортируйте MealService для работы с базой данных
 
 class AddFoodScreen extends StatefulWidget {
   final String mealType;
@@ -19,18 +21,21 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
   double foodFats = 0;
   double foodCarbs = 0;
 
-  void saveFoodItem() {
+  final MealService mealService = MealService();
+
+  void saveFoodItem() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      final newFoodItem = FoodItem(
-      name: foodName,
-      proteins: foodProteins,
-      fats: foodFats,
-      carbs: foodCarbs,
-      servingSize: foodWeight.toInt(),
-      calories: foodCalories,
-    );
-     Navigator.pop(context, newFoodItem);
+      
+      final newMeal = Meal(
+        type: widget.mealType,
+        calories: foodCalories,
+        timestamp: Timestamp.now(),
+      );
+
+      await mealService.addMeal(newMeal);
+
+      Navigator.pop(context);
     }
   }
 

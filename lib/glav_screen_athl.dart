@@ -11,6 +11,8 @@ import 'package:fitnessgo/myprofile_screen.dart';
 import 'package:fitnessgo/notify_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'settings_screen.dart';
+import 'package:provider/provider.dart';
 
 
 
@@ -45,11 +47,12 @@ class _BottomNavigationBarExampleState
   
   static const TextStyle optionStyle =
       TextStyle(fontSize: 30, fontWeight: FontWeight.bold);
+
   final List<Widget> _widgetOptions = <Widget>[
     ChatScreen(),
     ScheduleScreen(),
     MainMenuScreen(),
-    TrainingsScreen(),
+    UserWorkoutScreen(),
     ProfileScreen(),
   ];
   
@@ -67,24 +70,35 @@ class _BottomNavigationBarExampleState
     
     return Scaffold(
       appBar: AppBar(
-         // Иконка для возвращения на предыдущий экран
-        title: Text("FitnessGo",
-        style: TextStyle(fontWeight: FontWeight.w300, fontFamily: 'Montserrat'),
-        ), // Название приложения или логотип
-        actions: [
-          IconButton(
-            icon: Icon(Icons.notifications),
-            onPressed: () {
-                      
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_)=>NotificationsScreen()),
-              );
-            
-            
-            },
-          ),
-        ]
+        title: Text('FitnessGO'),
+        actions: _selectedIndex == 4 // Проверка, выбран ли экран профиля
+            ? <Widget>[
+                IconButton(
+                  icon: Icon(Icons.settings),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => SettingsScreen()),
+                    );
+                  },
+                ),
+              ]
+
+            : <Widget>[
+                IconButton(
+                  icon: Icon(Icons.notifications),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => NotificationsScreen()),
+                    );
+                  },
+                ),
+              ],
       ),
+            
+            
+      
       
       body: IndexedStack(
         index: _selectedIndex,
@@ -126,3 +140,5 @@ class _BottomNavigationBarExampleState
     );
   }
 }
+
+

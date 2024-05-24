@@ -3,7 +3,7 @@
 // подключение firebase БД
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'main_set_category_screen.dart';
 
