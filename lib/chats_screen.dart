@@ -1,94 +1,177 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import 'onChat_field_screen.dart';
-import 'package:provider/provider.dart';
-
-String getChatId(String userId1, String userId2) {
-  return userId1.hashCode <= userId2.hashCode
-      ? '$userId1-$userId2'
-      : '$userId2-$userId1';
-}
 
 class ChatScreen extends StatefulWidget {
-  
   @override
   _ChatScreenState createState() => _ChatScreenState();
-  
 }
 
 class _ChatScreenState extends State<ChatScreen> {
   Future<void> _refreshChats() async {
-    setState(() {
-      // Повторный запрос к БД на лист тренировок
-    });
+    setState(() {});
   }
+
   @override
   Widget build(BuildContext context) {
+    final currentUser = FirebaseAuth.instance.currentUser!.uid;
+
     return Scaffold(
-      body:RefreshIndicator(
+     
+      body: RefreshIndicator(
         onRefresh: _refreshChats,
-        child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('Users').snapshots(),
-        builder: (context, userSnapshot) {
-          if (userSnapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
+        child: Column(
+          children: [
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('Users')
+                  .doc(currentUser)
+                  .collection('friends')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return CircularProgressIndicator();
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return SizedBox.shrink();
+                }
 
-          final userDocs = userSnapshot.data?.docs ?? [];
+                final friends = snapshot.data!.docs;
 
-          return ListView.builder(
-            itemCount: userDocs.length,
-            itemBuilder: (ctx, index) {
-              var userData = userDocs[index].data() as Map<String, dynamic>;
-              var peerUserId = userDocs[index].id;
-              var userImage = userData['photoURL'] as String? ?? 'assets/example/123.jpeg';
+                return Container(
+                  height: 100,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: friends.length,
+                    itemBuilder: (context, index) {
+                      final friend = friends[index].data() as Map<String, dynamic>;
+                      final friendId = friends[index].id;
+                      final photoURL = friend['photoURL'] ?? 'assets/example/123.jpeg';
+                      final name = friend['name'] ?? 'Unknown';
 
-              return StreamBuilder<DocumentSnapshot>(
-                
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => IndividualChatScreen(
+                                peerUserId: friendId,
+                                userName: name,
+                                userImage: photoURL,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Column(
+                          children: [
+                            CircleAvatar(
+                              radius: 30,
+                              backgroundImage: NetworkImage(photoURL),
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              name,
+                              style: TextStyle(fontSize: 12),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    separatorBuilder: (context, index) => SizedBox(width: 10),
+                  ),
+                );
+              },
+            ),
+            Divider(thickness: 2),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('chats')
-                    .doc(getChatId(FirebaseAuth.instance.currentUser!.uid, peerUserId))
+                    .where('users', arrayContains: currentUser)
                     .snapshots(),
                 builder: (context, chatSnapshot) {
-                  var lastMessage = 'Нет сообщений';
-                  var lastMessageTime = '';
-                  if (chatSnapshot.data != null && chatSnapshot.data!.exists) {
-                    var chatData = chatSnapshot.data!.data() as Map<String, dynamic>;
-                    lastMessage = chatData['lastMessage'] ?? lastMessage;
-                    if (chatData['lastMessageTime'] != null) {
-                      DateTime messageTime = (chatData['lastMessageTime'] as Timestamp).toDate();
-                      lastMessageTime = DateFormat('HH:mm').format(messageTime);
-                    }
+                  if (chatSnapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
                   }
-                  
-                  
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundImage:  NetworkImage(userImage),
-                    ),
-                    title: Text('${userData['name']} ${userData['surname']}'),
-                    subtitle: Text(lastMessage),
-                    trailing: Text(lastMessageTime),
-                     onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => IndividualChatScreen(
-                            peerUserId: peerUserId,
-                            userName: '${userData['name']} ${userData['surname']}',
-                            userImage: userImage,
-                         ),
-                        ),
+                  if (!chatSnapshot.hasData || chatSnapshot.data!.docs.isEmpty) {
+                    return Center(child: Text('Чаты отсутствуют'));
+                  }
+
+                  final chatDocs = chatSnapshot.data!.docs;
+
+                  return ListView.builder(
+                    itemCount: chatDocs.length,
+                    itemBuilder: (ctx, index) {
+                      var chatData = chatDocs[index].data() as Map<String, dynamic>;
+                      var lastMessage = chatData['lastMessage'] ?? 'Нет сообщений';
+                      var lastMessageTime = '';
+                      if (chatData['lastMessageTime'] != null) {
+                        DateTime messageTime = (chatData['lastMessageTime'] as Timestamp).toDate();
+                        lastMessageTime = DateFormat('HH:mm').format(messageTime);
+                      }
+
+                      final friendId = chatData['users'].firstWhere((id) => id != currentUser);
+                      final friendData = FirebaseFirestore.instance.collection('Users').doc(friendId).get();
+                      final chatId = chatDocs[index].id;  // Получаем chatId
+
+                      return FutureBuilder<DocumentSnapshot>(
+                        future: friendData,
+                        builder: (context, friendSnapshot) {
+                          if (!friendSnapshot.hasData) {
+                            return SizedBox.shrink();
+                          }
+
+                          var friendInfo = friendSnapshot.data!.data() as Map<String, dynamic>;
+                          var friendName = friendInfo['name'] ?? 'Unknown';
+                          var friendPhotoURL = friendInfo['photoURL'] ?? 'assets/example/123.jpeg';
+
+                          return StreamBuilder<QuerySnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('chats/$chatId/messages')
+                                .where('isRead', isEqualTo: false)
+                                .where('userId', isEqualTo: friendId)
+                                .snapshots(),
+                            builder: (context, unreadSnapshot) {
+                              bool hasUnreadMessages = unreadSnapshot.hasData && unreadSnapshot.data!.docs.isNotEmpty;
+
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundImage: NetworkImage(friendPhotoURL),
+                                ),
+                                title: Text(friendName),
+                                subtitle: Text(lastMessage),
+                                trailing: Column(
+                                  children: [
+                                    Text(lastMessageTime),
+                                    if (hasUnreadMessages)
+                                      const Icon(Icons.brightness_1, color: Colors.red, size: 10),
+                                  ],
+                                ),
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => IndividualChatScreen(
+                                        peerUserId: friendId,
+                                        userName: friendName,
+                                        userImage: friendPhotoURL,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        },
                       );
                     },
                   );
                 },
-              );
-            },
-          );
-        },
-      ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

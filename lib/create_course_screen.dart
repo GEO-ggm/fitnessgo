@@ -1,17 +1,18 @@
 import 'dart:io';
-
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:fitnessgo/step_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
-import 'step_screen.dart'; 
+import 'step_screen.dart';
 import 'course.dart';
 import 'package:path/path.dart' as Path;
 
-
 class CreateCourseScreen extends StatefulWidget {
+  final Function onCourseCreated;
+
+  CreateCourseScreen({required this.onCourseCreated});
+
   @override
   _CreateCourseScreenState createState() => _CreateCourseScreenState();
 }
@@ -22,35 +23,35 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
   String courseDescription = '';
   List<Stage> stages = [];
 
-void saveCourse() async {
-  if (_formKey.currentState!.validate()) {
-    _formKey.currentState!.save();
-    
-    // Получаем текущего пользователя
-    User? user = FirebaseAuth.instance.currentUser;
+  void saveCourse() async {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
 
-    // Создаем курс с необходимыми полями
-    final newCourse = Course(
-      id: '', // Firestore автоматически присвоит ID
-      title: courseTitle,
-      description: courseDescription,
-      stages: stages,
-      uid: user!.uid, // Сохраняем uid текущего пользователя
-    );
+      // Получаем текущего пользователя
+      User? user = FirebaseAuth.instance.currentUser;
 
-    await FirebaseFirestore.instance
-        .collection('courses')
-        .add(newCourse.toMap())
-        .then((DocumentReference doc) {
-          print('Course added with ID: ${doc.id}');
-        })
-        .catchError((error) {
-          print('Error adding course: $error');
-        });
+      // Создаем курс с необходимыми полями
+      final newCourse = Course(
+        id: '', // Firestore автоматически присвоит ID
+        title: courseTitle,
+        description: courseDescription,
+        stages: stages,
+        uid: user!.uid, // Сохраняем uid текущего пользователя
+      );
 
-    Navigator.pop(context);
+      await FirebaseFirestore.instance
+          .collection('courses')
+          .add(newCourse.toMap())
+          .then((DocumentReference doc) {
+        print('Course added with ID: ${doc.id}');
+        widget.onCourseCreated(); // Увеличиваем счетчик курсов
+      }).catchError((error) {
+        print('Error adding course: $error');
+      });
+
+      Navigator.pop(context);
+    }
   }
-}
 
   void addStage() {
     Navigator.push(
@@ -167,7 +168,6 @@ class _CreateStageScreenState extends State<CreateStageScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -220,5 +220,3 @@ class _CreateStageScreenState extends State<CreateStageScreen> {
     );
   }
 }
-
-

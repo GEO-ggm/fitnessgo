@@ -64,6 +64,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
       _loadData();
+      _checkAndFetchStepData();
     }
   }
   //Проверка наличия googleHealth на устройстве
@@ -135,9 +136,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _nofSteps = (steps == null) ? 0 : steps;
         _state = (steps == null) ? AppState.NO_DATA : AppState.STEPS_READY;
       });
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('lastStepFetch', now.millisecondsSinceEpoch);
     } else {
       debugPrint("Authorization not granted - error in authorization");
       setState(() => _state = AppState.DATA_NOT_FETCHED);
+    }
+  }
+
+  Future<void> _checkAndFetchStepData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastFetch = prefs.getInt('lastStepFetch') ?? 0;
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    if (now - lastFetch > 3600000) {
+      await fetchStepData();
     }
   }
   
@@ -294,11 +307,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildSummaryCard(context, 'assets/icons/water.svg', 'Вода', mealService.getWaterStream(), 'Л',),
               _buildSummaryCard(context, 'assets/icons/steps.svg', 'Шаги', Stream.value(_nofSteps), ''),
               _buildSummaryCard(context, 'assets/icons/weightloc.svg', 'Вес', mealService.getWeightStream(), 'Кг'),
-              TextButton(onPressed: fetchStepData, child: Text("Fetch Step Data",
-                          style: TextStyle(color: Colors.white)),
-                      style: ButtonStyle(
-                          backgroundColor:
-                              MaterialStatePropertyAll(Colors.blue))),
+              //TextButton(onPressed: fetchStepData, child: Text("Fetch Step Data",
+                          //style: TextStyle(color: Colors.white)),
+                      //style: ButtonStyle(
+                          //backgroundColor:
+                              //MaterialStatePropertyAll(Colors.blue))),
             ],
           ),
         ),

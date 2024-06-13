@@ -1,6 +1,6 @@
-// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
-
+import 'package:fitnessgo/email_verification_screen.dart';
 import 'package:fitnessgo/main_set_screen.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fitnessgo/registration_screen.dart';
 import 'package:fitnessgo/reset_password_screen.dart';
@@ -11,32 +11,36 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'glav_screen.dart';
 import 'glav_screen_athl.dart';
-import 'main_set_category_screen.dart';
-import 'package:provider/provider.dart';
-import 'settings_screen.dart';
 import 'package:theme_provider/theme_provider.dart';
-import 'package:yandex_mapkit/yandex_mapkit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   
   bool isLoggedIn = await checkLoginStatus();
-  String? userType = isLoggedIn ? await getUserType() : null;
+  String? userType;
+  bool isUserDataComplete = false;
+
+  if (isLoggedIn) {
+    userType = await getUserType();
+    if (userType != null) {
+      isUserDataComplete = await checkUserDataComplete();
+    }
+  }
 
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeNotifier(),
-      child: MyApp(isLoggedIn: isLoggedIn, userType: userType),
+      child: MyApp(isLoggedIn: isLoggedIn, userType: userType, isUserDataComplete: isUserDataComplete),
     ),
   );
 }
+
 Future<bool> checkLoginStatus() async {
   final prefs = await SharedPreferences.getInstance();
   return prefs.containsKey('user_token');
 }
-
-
+  
 Future<String?> getUserType() async {
   final prefs = await SharedPreferences.getInstance();
   String? uid = prefs.getString('user_token');
@@ -63,24 +67,55 @@ Future<String?> getUserType() async {
     // Возвращаем null, если произошла ошибка
     return null;
   }
+  
 }
+
+Future<bool> checkUserDataComplete() async {
+  final prefs = await SharedPreferences.getInstance();
+  String? uid = prefs.getString('user_token');
+  if (uid == null) {
+    return false;
+  }
+  
+  try {
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('Users').doc(uid).get();
+
+    if (!userDoc.exists) {
+      return false;
+    }
+
+    final data = userDoc.data() as Map<String, dynamic>?; 
+    if (data == null || data['name'] == null || data['surname'] == null || data['role'] == null || data['choose'] == null) {
+      return false;
+    }
+
+    return true;
+  } catch (e) {
+    print('Error checking user data completeness: $e');
+    return false;
+  }
+}
+
+ 
 
 class MyApp extends StatelessWidget {
   final bool isLoggedIn;
   final String? userType;
-
-  MyApp({required this.isLoggedIn, required this.userType});
+  final bool isUserDataComplete;
+  MyApp({required this.isLoggedIn, required this.userType, required this.isUserDataComplete});
 
   @override
   Widget build(BuildContext context) {
     return ThemeProvider(
        saveThemesOnChange: true,
-      loadThemeOnInit: true,
+        loadThemeOnInit: true,
       themes: [
           AppTheme(
           id: 'light_theme',
           description: 'Light Theme',
           data: ThemeData.light(),
+          
+          
         ),
          AppTheme(
           id: 'dark_theme',
@@ -93,8 +128,14 @@ class MyApp extends StatelessWidget {
         builder: (themeContext) => MaterialApp(
           debugShowCheckedModeBanner: false,
           theme: ThemeProvider.themeOf(themeContext).data,
-           home: isLoggedIn && userType != null
-              ? (userType == 'Тренер' ? CoachProfileScreen() : AthleteProfileScreen())
+           home: isLoggedIn 
+              ? (userType == 'Тренер'
+                ? CoachProfileScreen()
+                : (userType == 'Спортсмен'
+                  ? AthleteProfileScreen()
+                  : (!isUserDataComplete && FirebaseAuth.instance.currentUser != null
+                    ? ProfileSetupScreen(uid: FirebaseAuth.instance.currentUser!.uid)
+                    : AuthorizationScreen())))
               : AuthorizationScreen(),
         ),
         ),
@@ -102,6 +143,7 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
 class ThemeNotifier extends ChangeNotifier {
   bool _isDarkTheme = false;
 
@@ -125,8 +167,6 @@ class AuthorizationScreenState extends State<AuthorizationScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordHidden = true;
 
-
-
   Future<void> _login() async {
     try {
       UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -136,25 +176,60 @@ class AuthorizationScreenState extends State<AuthorizationScreen> {
 
       if (userCredential.user != null) {
         String uid = userCredential.user!.uid;
+
+        // Проверяем верифицирована ли почта
+        if (!userCredential.user!.emailVerified) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => EmailVerificationScreen(uid: uid)),
+          );
+          return;
+        }
+
+        // Получаем документ пользователя из Firestore
         DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('Users').doc(uid).get();
-        String userType = userDoc['role'];
+
+        if (!userDoc.exists && userDoc.data() == null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => ProfileSetupScreen(uid: uid)),
+          );
+          return;
+        }
+
+        var userData = userDoc.data() as Map<String, dynamic>?;
+
+        if (userData == null || userData['name'] == null || userData['surname'] == null || userData['role'] == null || userData['choose'] == null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => ProfileSetupScreen(uid: uid)),
+          );
+          return;
+        }
+
+        String userType = userData['role'];
 
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_token', userCredential.user!.uid);
+        await prefs.setString('user_token', uid);
         await prefs.setString('user_type', userType);
 
         if (userType == 'Тренер') {
-          Navigator.pushReplacement(
+          Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => CoachProfileScreen()),
+            (route) => false,
           );
         } else if (userType == 'Спортсмен') {
-          Navigator.pushReplacement(
+          Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => AthleteProfileScreen()),
+            (route) => false,
           );
         } else {
-          throw Exception("Unknown user type");
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => ProfileSetupScreen(uid: uid)),
+          );
         }
       }
     } on FirebaseAuthException catch (e) {
@@ -170,6 +245,9 @@ class AuthorizationScreenState extends State<AuthorizationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    var theme = Theme.of(context);
+    var textColor = theme.brightness == Brightness.dark ? Colors.white : Colors.black;
+    var backgroundColor = theme.brightness == Brightness.dark ? Colors.black : Colors.white;
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -193,6 +271,7 @@ class AuthorizationScreenState extends State<AuthorizationScreen> {
                   style: TextStyle(
                     fontSize: 45,
                     fontWeight: FontWeight.bold,
+                    color: Colors.black,
                   ),
                 ),
               ],
@@ -208,6 +287,7 @@ class AuthorizationScreenState extends State<AuthorizationScreen> {
                     style: TextStyle(
                       fontSize: 35,
                       fontWeight: FontWeight.bold,
+                      color: Colors.black,
                     ),
                   ),
                 ),
@@ -232,12 +312,12 @@ class AuthorizationScreenState extends State<AuthorizationScreen> {
             ),
             SizedBox(height: 48),
             TextField(
-              controller: _emailController,
+              controller: _emailController, style: TextStyle(color: Colors.black),
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
                 filled: true,
                 fillColor: Colors.white,
-                labelStyle: TextStyle(fontFamily: 'Light', fontWeight: FontWeight.w300),
+                labelStyle: TextStyle(fontFamily: 'Light', fontWeight: FontWeight.w300, color: Colors.black),
                 hintStyle: TextStyle(color: Colors.black),
                 labelText: 'Почта',
                 border: OutlineInputBorder(
@@ -247,15 +327,17 @@ class AuthorizationScreenState extends State<AuthorizationScreen> {
             ),
             SizedBox(height: 16),
             TextField(
-              controller: _passwordController,
-              obscureText: _isPasswordHidden,
+              controller: _passwordController, style: TextStyle(color: Colors.black),
+              obscureText: _isPasswordHidden, 
               decoration: InputDecoration(
                 filled: true,
                 fillColor: Colors.white,
                 labelText: 'Пароль',
-                hintStyle: TextStyle(decorationColor: Colors.black),
+                hintStyle: TextStyle(decorationColor: textColor),
+                labelStyle: TextStyle(fontFamily: 'Light', fontWeight: FontWeight.w300, color: Colors.black),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16.0),
+                   
                 ),
                 suffixIcon: IconButton(
                   icon: Icon(_isPasswordHidden ? Icons.visibility_off : Icons.visibility),

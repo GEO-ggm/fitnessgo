@@ -162,7 +162,7 @@ class _StatScreenState extends State<StatScreen> {
               height: 200, // Задаем фиксированную высоту для LineChart
               child: LineChart(
                 LineChartData(
-                  borderData: FlBorderData(show: true, border: Border.all(color: Color.fromARGB(31, 255, 255, 255))),
+                  borderData: FlBorderData(show: false, border: Border.all(color: Color.fromARGB(31, 255, 255, 255))),
                   gridData: FlGridData(show: false),
                   titlesData: FlTitlesData(
                     topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -174,7 +174,7 @@ class _StatScreenState extends State<StatScreen> {
                       spots: weightData.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value)).toList(),
                       isCurved: true,
                       color: Color.fromARGB(255, 6, 98, 77),
-                      barWidth: 2,
+                      barWidth: 3,
                     )
                   ],
                 ),

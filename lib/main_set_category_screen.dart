@@ -33,7 +33,7 @@ class FitnessInterestScreen extends StatefulWidget {
   _FitnessInterestScreenState createState() => _FitnessInterestScreenState();
 }
 class _FitnessInterestScreenState extends State<FitnessInterestScreen> {
-  List<bool> selectedCategories = List.generate(fitnessCategories.length, (index) => false);
+  List<bool>? _selectedCategories = List.generate(fitnessCategories.length, (index) => false);
   late final String userId; // Создаем переменную для хранения userId
   late final DocumentReference userDoc; // Создаем переменную для хранения ссылки на документ
 @override
@@ -52,7 +52,7 @@ class _FitnessInterestScreenState extends State<FitnessInterestScreen> {
     // Создаем Map для отправки в Firebase
     final selectedPreferences = <String, bool>{};
     for (var i = 0; i < fitnessCategories.length; i++) {
-      selectedPreferences[fitnessCategories[i]['name']] = selectedCategories[i];
+      selectedPreferences[fitnessCategories[i]['name']] = _selectedCategories![i];
     }
 
     try {
@@ -76,10 +76,34 @@ class _FitnessInterestScreenState extends State<FitnessInterestScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Ваши интересы'),
+        title: LinearProgressIndicator(
+          value: 0.50, // Прогресс 2 из 4
+          backgroundColor: Colors.grey[300],
+          valueColor: AlwaysStoppedAnimation<Color>(Color.fromARGB(255, 32, 151, 69)),
+      ),
       ),
       body: Column(
+        
         children: [
+           Padding(
+            padding: EdgeInsets.all(22.0),
+            child: Text('ШАГ 2/4',
+             style: TextStyle(
+              fontSize: 14, 
+              fontWeight: FontWeight.normal, 
+              fontFamily: 'Montserrat'
+              )
+              ),
+          ),
+          SizedBox(height: 5),
+                    
+            Text('Ваши интересы?',
+            style: TextStyle(
+              fontWeight: FontWeight.w400,
+              fontSize: 26,
+            ),
+            ),
+          SizedBox(height: 15),
           Expanded(
             child: Padding(
               padding: EdgeInsets.all(16),
@@ -92,9 +116,10 @@ class _FitnessInterestScreenState extends State<FitnessInterestScreen> {
                 itemCount: fitnessCategories.length,
                 itemBuilder: (BuildContext context, int index) {
                   return GestureDetector(
+                    child: InkWell(
                     onTap: () {
                       setState(() {
-                        selectedCategories[index] = !selectedCategories[index];
+                        _selectedCategories![index] = !_selectedCategories![index];
                       });
                     },
                     child: Container(
@@ -110,11 +135,13 @@ class _FitnessInterestScreenState extends State<FitnessInterestScreen> {
                             offset: Offset(0, 3),
                           ),
                         ],
+
                         border: Border.all(
-                          color: selectedCategories[index] ? Colors.green : Colors.transparent,
+                          color: _selectedCategories![index] ? Colors.green : Colors.transparent,
                           width: 4,
                         ),
                       ),
+                    
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: <Widget>[
@@ -137,6 +164,7 @@ class _FitnessInterestScreenState extends State<FitnessInterestScreen> {
                         ],
                       ),
                     ),
+                    ),
                   );
                 },
               ),
@@ -145,10 +173,16 @@ class _FitnessInterestScreenState extends State<FitnessInterestScreen> {
           Padding(
             padding: EdgeInsets.only(bottom: 100),
             child: ElevatedButton(
-              onPressed: () {
-                 _savePreferencesToFirebase();
+              style: ElevatedButton.styleFrom(
+              backgroundColor: Color.fromARGB(255, 6, 98, 77), // цвет кнопки
+              foregroundColor: Colors.white, // цвет содержимого кнопки
+              textStyle: TextStyle(fontFamily: 'Montserrat', fontWeight: FontWeight.w500),
+            ),
+              onPressed: _selectedCategories != null ? () async {
+                 await _savePreferencesToFirebase();
                  Navigator.push(context, MaterialPageRoute(builder: (context)=> UserInfoScreen()));
-              },
+              }
+              : null,
               child: Text('Далее'),
             ),
           ),

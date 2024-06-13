@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'create_course_screen.dart';
 import 'trainer_profile_form_screen.dart';
 import 'requests_screen.dart';
@@ -43,29 +44,43 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
   Future<void> _loadTrainerData() async {
     try {
       String userId = FirebaseAuth.instance.currentUser!.uid;
-      DocumentSnapshot trainerDoc = await FirebaseFirestore.instance.collection('Trainers').doc(userId).get();
 
-      if (trainerDoc.exists) {
+      // Загружаем количество курсов
+      QuerySnapshot courseSnapshot = await FirebaseFirestore.instance
+          .collection('courses')
+          .where('uid', isEqualTo: userId)
+          .get();
+      setState(() {
+        _courseCount = courseSnapshot.docs.length;
+      });
+
+      // Загружаем количество тренировок
+      QuerySnapshot trainingSnapshot = await FirebaseFirestore.instance
+          .collection('Trainings')
+          .where('coachId', isEqualTo: userId)
+          .get();
+      setState(() {
+        _trainingCount = trainingSnapshot.docs.length;
+      });
+
+      // Загружаем рейтинг тренера
+      QuerySnapshot reviewSnapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(userId)
+          .collection('Reviews')
+          .get();
+      if (reviewSnapshot.docs.isNotEmpty) {
+        double totalRating = 0.0;
+        reviewSnapshot.docs.forEach((doc) {
+          totalRating += doc['rating'];
+        });
         setState(() {
-          _courseCount = trainerDoc['courseCount'] ?? 0;
-          _rating = trainerDoc['rating']?.toDouble() ?? 0.0;
-          _trainingCount = trainerDoc['trainingCount'] ?? 0;
+          _rating = totalRating / reviewSnapshot.docs.length;
         });
       }
     } catch (e) {
       print('Error loading trainer data: $e');
     }
-  }
-
-  void _incrementTrainingCount() {
-    setState(() {
-      _trainingCount++;
-    });
-
-    String userId = FirebaseAuth.instance.currentUser!.uid;
-    FirebaseFirestore.instance.collection('Trainers').doc(userId).update({
-      'trainingCount': _trainingCount,
-    });
   }
 
   @override
@@ -75,7 +90,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
         padding: EdgeInsets.all(16.0),
         children: <Widget>[
           _buildProfileSection(),
-          _buildTrainerStats(),
+          _buildTrainerStats(context),
           _buildActionButtons(),
         ],
       ),
@@ -94,21 +109,49 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
             child: _photoUrl.isEmpty ? Icon(Icons.camera_alt, size: 50) : null,
           ),
           SizedBox(width: 20),
-          Text(
-            _fullName,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _fullName,
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              _buildStarRating(_rating),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTrainerStats() {
+  Widget _buildStarRating(double rating) {
+    int fullStars = rating.floor();
+    bool hasHalfStar = (rating - fullStars) >= 0.5;
+
+    return Row(
+      children: List.generate(5, (index) {
+        if (index < fullStars) {
+          return Icon(Icons.star, color: Colors.green);
+        } else if (index == fullStars && hasHalfStar) {
+          return Icon(Icons.star_half, color: Colors.grey);
+        } else {
+          return Icon(Icons.star_border, color: Colors.grey);
+        }
+      }),
+    );
+  }
+
+  Widget _buildTrainerStats(BuildContext context) {
+    var theme = Theme.of(context);
+    var textColor = theme.brightness == Brightness.dark ? Colors.white : Colors.black;
+    var backgroundColor = theme.brightness == Brightness.dark ? Colors.black : Colors.white;
+
     return Container(
       padding: EdgeInsets.all(16.0),
       margin: EdgeInsets.symmetric(vertical: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: Color.fromARGB(255, 6, 98, 77),
@@ -124,29 +167,24 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
       ),
       child: Column(
         children: <Widget>[
-          _buildStatRow('Курсы', _courseCount.toString()),
-          _buildStatRow('Рейтинг', _rating.toString()),
-          _buildStatRow('Тренировки', _trainingCount.toString(), isIncrementable: true),
+          _buildStatRow('Курсы', _courseCount.toString(), textColor),
+          _buildStatRow('Рейтинг', _rating.toStringAsFixed(1), textColor),
+          _buildStatRow('Тренировки', _trainingCount.toString(), textColor),
         ],
       ),
     );
   }
 
-  Widget _buildStatRow(String title, String value, {bool isIncrementable = false}) {
+  Widget _buildStatRow(String title, String value, Color textColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: <Widget>[
-          Text(title, style: TextStyle(fontSize: 18)),
+          Text(title, style: TextStyle(fontSize: 18, color: textColor)),
           Row(
             children: <Widget>[
-              Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              if (isIncrementable)
-                IconButton(
-                  icon: Icon(Icons.add_circle, color: Colors.green),
-                  onPressed: _incrementTrainingCount,
-                ),
+              Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
             ],
           ),
         ],
@@ -158,32 +196,30 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        ElevatedButton(
+        ElevatedButton.icon(
           onPressed: () {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => TrainerProfileFormScreen()),
             );
           },
-          child: Text('Анкета тренера'),
+          icon: Icon(Icons.sports, color: Colors.white,), // Иконка свистка
+          label: Text('Анкета тренера'),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.green,  foregroundColor: Colors.white),
         ),
         ElevatedButton(
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => CreateCourseScreen()),
+              MaterialPageRoute(
+                builder: (context) => CreateCourseScreen(
+                  onCourseCreated: _loadTrainerData, // Обновляем данные после создания курса
+                ),
+              ),
             );
           },
           child: Text('Создать курс'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => RequestsScreen()),
-            );
-          },
-          child: Text('Запросы'),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
         ),
       ],
     );

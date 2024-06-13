@@ -1,31 +1,37 @@
+import 'package:fitnessgo/TrainersList_screen.dart';
 import 'package:fitnessgo/createpost_screen.dart';
+import 'package:fitnessgo/dating_screen.dart';
 import 'package:fitnessgo/view_courses_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class MainMenuScreen extends StatelessWidget {
+class MainMenuScreen extends StatefulWidget {
+  @override
+  _MainMenuScreenState createState() => _MainMenuScreenState();
+}
+
+class _MainMenuScreenState extends State<MainMenuScreen> {
+  String _selectedHashtag = '';
+
+  void _filterPostsByHashtag(String hashtag) {
+    setState(() {
+      _selectedHashtag = hashtag;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Главная'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.create),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => CreatePostScreen()),
-              );
-            },
+     
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: _buildCategoriesSection(context),
           ),
-        ],
-      ),
-      body: ListView(
-        children: [
-          _buildCategoriesSection(context),
-          _buildHashtagFilter(context),
+          SliverToBoxAdapter(
+            child: _buildHashtagFilter(context),
+          ),
           _buildPostsSection(context),
         ],
       ),
@@ -59,6 +65,18 @@ class MainMenuScreen extends StatelessWidget {
               MaterialPageRoute(builder: (context) => CoursesScreen()),
             );
           }
+          if (title == 'Найти партнера') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => DatingScreen()),
+            );
+          }
+          if (title == 'Найти тренера') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => TrainersListScreen()),
+            );
+          }
         },
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -83,8 +101,9 @@ class MainMenuScreen extends StatelessWidget {
             padding: const EdgeInsets.all(8.0),
             child: FilterChip(
               label: Text(hashtags[index]),
+              selected: _selectedHashtag == hashtags[index],
               onSelected: (bool selected) {
-                // Фильтрация постов по выбранному хештегу
+                _filterPostsByHashtag(selected ? hashtags[index] : '');
               },
             ),
           );
@@ -94,27 +113,64 @@ class MainMenuScreen extends StatelessWidget {
   }
 
   Widget _buildPostsSection(BuildContext context) {
-    // TODO: Реализация списка постов
-    return StreamBuilder(
-      stream: FirebaseFirestore.instance.collection('MainBoard').snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return Center(child: CircularProgressIndicator());
-        }
-        var posts = snapshot.data!.docs;
-        return Column(
-          children: List.generate(posts.length, (index) {
-            var post = posts[index];
-            return Card(
-              child: ListTile(
-                leading: Icon(Icons.person),
-                title: Text(post['title']),
-                subtitle: Text(post['content']),
-              ),
-            );
-          }),
-        );
-      },
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          return StreamBuilder(
+            stream: FirebaseFirestore.instance.collection('MainBoard').snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return Center(child: CircularProgressIndicator());
+              }
+              var posts = snapshot.data!.docs;
+              if (_selectedHashtag.isNotEmpty) {
+                posts = posts.where((post) {
+                  List hashtags = post['hashtags'];
+                  return hashtags.contains(_selectedHashtag);
+                }).toList();
+              }
+              return Column(
+                children: List.generate(posts.length, (index) {
+                  var post = posts[index];
+                  return FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance.collection('Users').doc(post['uid']).get(),
+                    builder: (context, userSnapshot) {
+                      if (!userSnapshot.hasData) {
+                        return ListTile(
+                          title: Text(post['content']),
+                        );
+                      }
+                      var userData = userSnapshot.data!.data() as Map<String, dynamic>;
+                      return Card(
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundImage: NetworkImage(userData['photoURL'] ?? ''),
+                          ),
+                          title: Text('${userData['name']} ${userData['surname']}'),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (post['imageUrl'] != null && post['imageUrl'].isNotEmpty)
+                                Image.network(post['imageUrl'], height: 150, width: double.infinity, fit: BoxFit.cover),
+                              Text(post['content']),
+                              Wrap(
+                                children: List<Widget>.generate(post['hashtags'].length, (index) {
+                                  return Chip(label: Text(post['hashtags'][index]));
+                                }),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }),
+              );
+            },
+          );
+        },
+        childCount: 1, // This is to make sure the SliverChildBuilderDelegate works correctly.
+      ),
     );
   }
 }

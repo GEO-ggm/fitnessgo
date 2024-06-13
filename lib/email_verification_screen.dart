@@ -1,10 +1,12 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'main_set_screen.dart';
 import 'dart:async';
 
 class EmailVerificationScreen extends StatefulWidget {
-  const EmailVerificationScreen({super.key});
+  final String uid;
+
+  const EmailVerificationScreen({required this.uid, Key? key}) : super(key: key);
 
   @override
   _EmailVerificationScreenState createState() => _EmailVerificationScreenState();
@@ -20,7 +22,6 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   void initState() {
     super.initState();
 
-    // Пользователь должен быть в системе, чтобы попасть на этот экран
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null && !user.emailVerified) {
       user.sendEmailVerification();
@@ -39,16 +40,16 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   }
 
   Future<void> checkEmailVerified() async {
-    // Обновляем статус пользователя
     await FirebaseAuth.instance.currentUser!.reload();
     var user = FirebaseAuth.instance.currentUser;
 
-    // Если почта подтверждена, перенаправляем пользователя на главный экран
     if (user != null && user.emailVerified) {
       timer?.cancel();
-      Navigator.push(
+      Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => const ProfileSetupScreen())); 
+        MaterialPageRoute(builder: (context) => ProfileSetupScreen(uid: widget.uid)),
+        (route) => false,
+      );
     }
   }
 
