@@ -78,7 +78,7 @@ class MenteesScreen extends StatelessWidget {
                       ),
                       title: Text('${userData['name']} ${userData['surname']}'),
                       subtitle: Text(
-                        'С вами с ${requestData['category'] != null ? DateFormat.yMMMd().format(requestData['timestamp'].toDate()) : 'неизвестно'}',
+                        'Направление: ${requestData['category']}',
                       ),
                       onTap: () {
                         Navigator.push(
@@ -159,7 +159,10 @@ class _MenteeDetailScreenState extends State<MenteeDetailScreen> {
           .get();
 
       setState(() {
-        trainings = trainingsSnapshot.docs;
+        trainings = trainingsSnapshot.docs.where((doc) {
+          var data = doc.data() as Map<String, dynamic>;
+          return data['title'] != 'Индивидуальная тренировка';
+        }).toList();
       });
     }
   }
@@ -367,9 +370,21 @@ class _MenteeDetailScreenState extends State<MenteeDetailScreen> {
                           '${userData['name']} ${userData['surname']}',
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
-                        Text(
-                          'Направление: Похудение',//'Направление: ${userData['category']}',
-                          style: TextStyle(color: Colors.grey),
+                        FutureBuilder<DocumentSnapshot>(
+                          future: FirebaseFirestore.instance.collection('Users').doc(currentUser!.uid).collection('Requests').doc(widget.userId).get(),
+                          builder: (context, requestSnapshot) {
+                            if (requestSnapshot.connectionState == ConnectionState.waiting) {
+                              return Text('Загрузка...');
+                            }
+                            if (!requestSnapshot.hasData || !requestSnapshot.data!.exists) {
+                              return Text('Категория не найдена');
+                            }
+                            var requestData = requestSnapshot.data!.data() as Map<String, dynamic>;
+                            return Text(
+                              'Направление: ${requestData['category']}',
+                              style: TextStyle(color: Colors.grey),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -429,6 +444,10 @@ class _MenteeDetailScreenState extends State<MenteeDetailScreen> {
                           return Column(
                             children: trainings.map<Widget>((training) {
                               var trainingData = training.data() as Map<String, dynamic>;
+                              // Исключаем отображение индивидуальных тренировок
+                              if (trainingData['title'] == 'Индивидуальная тренировка') {
+                                return Container();
+                              }
                               return ListTile(
                                 title: Text('Тренировка: ${trainingData['title']}'),
                                 subtitle: Text(

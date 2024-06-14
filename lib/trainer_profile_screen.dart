@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'create_course_screen.dart';
 import 'trainer_profile_form_screen.dart';
 import 'requests_screen.dart';
+import 'TrainerReviewsViewOnlyScreen.dart';  // Добавьте импорт для нового экрана отзывов
 
 class TrainerProfileScreen extends StatefulWidget {
   @override
@@ -219,6 +220,18 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
             );
           },
           child: Text('Создать курс'),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TrainerReviewsViewOnlyScreen(trainerId: FirebaseAuth.instance.currentUser!.uid),
+              ),
+            );
+          },
+          child: Text('Посмотреть отзывы'),
           style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
         ),
       ],

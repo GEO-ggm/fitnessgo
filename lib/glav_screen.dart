@@ -1,5 +1,7 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 
+import 'package:fitnessgo/CoachCalendar_screen.dart';
+import 'package:fitnessgo/IndTrainCoachtoAthl.dart';
 import 'package:fitnessgo/add_training_screen.dart';
 import 'package:fitnessgo/calendar_screen.dart';
 import 'package:fitnessgo/chats_screen.dart';
@@ -27,7 +29,7 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
 
   static List<Widget> _widgetOptions = <Widget>[
     ChatScreen(),
-    ScheduleScreen(),
+    CoachScheduleScreen(),
     CoachMainMenuScreen(),
     TrainerWorkoutScreen(),
     TrainerProfileScreen(),
@@ -66,7 +68,10 @@ class _CoachProfileScreenState extends State<CoachProfileScreen> {
         IconButton(
           icon: Icon(Icons.add_circle),
           onPressed: () {
-            // Add your action for adding a schedule item here
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => CreateIndividualTrainingScreen()),
+            );
           },
         ),
       );

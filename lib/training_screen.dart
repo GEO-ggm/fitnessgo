@@ -13,6 +13,7 @@ class _UserWorkoutScreenState extends State<UserWorkoutScreen> {
   Stream<List<QueryDocumentSnapshot>> _getWorkouts() {
     return FirebaseFirestore.instance
         .collection('Trainings')
+        .where('title', isNotEqualTo: 'Индивидуальная тренировка') // Фильтр для исключения индивидуальных тренировок
         .snapshots()
         .map((snapshot) => snapshot.docs);
   }
@@ -20,9 +21,6 @@ class _UserWorkoutScreenState extends State<UserWorkoutScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Доступные тренировки"),
-      ),
       body: StreamBuilder<List<QueryDocumentSnapshot>>(
         stream: _getWorkouts(),
         builder: (context, snapshot) {

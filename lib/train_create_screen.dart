@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 import 'add_training_screen.dart';
+import 'CoachTrainCheck.dart'; // Импортируем экран деталей тренировки
 
 class TrainerWorkoutScreen extends StatefulWidget {
   @override
@@ -50,10 +51,21 @@ class _TrainerWorkoutScreenState extends State<TrainerWorkoutScreen> {
             if (!snapshot.hasData || snapshot.data!.isEmpty) {
               return Center(child: Text("Список ваших тренировок будет здесь", style: TextStyle(color: textColor)));
             }
+
+            // Фильтрация тренировок
+            var workouts = snapshot.data!.where((doc) {
+              var data = doc.data() as Map<String, dynamic>;
+              return data['title'] != 'Индивидуальная тренировка' && !(data.containsKey('isIndividual') && data['isIndividual'] == true);
+            }).toList();
+
+            if (workouts.isEmpty) {
+              return Center(child: Text("Нет тренировок для отображения", style: TextStyle(color: textColor)));
+            }
+
             return ListView.builder(
-              itemCount: snapshot.data!.length,
+              itemCount: workouts.length,
               itemBuilder: (context, index) {
-                var doc = snapshot.data![index];
+                var doc = workouts[index];
                 var data = doc.data() as Map<String, dynamic>;
                 return Dismissible(
                   key: Key(doc.id),
@@ -91,25 +103,35 @@ class _TrainerWorkoutScreenState extends State<TrainerWorkoutScreen> {
                       },
                     );
                   },
-                  child: Container(
-                    margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.5),
-                          spreadRadius: 2,
-                          blurRadius: 7,
-                          offset: Offset(0, 3), // changes position of shadow
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TrainDetailCheck(trainingId: doc.id),
                         ),
-                      ],
-                    ),
-                    child: ListTile(
-                      title: Text(data['title'], style: TextStyle(color: textColor)),
-                      subtitle: Text(
-                        "${DateFormat('dd.MM.yyyy HH:mm').format(data['date'].toDate())} - Вместимость: ${data['capacity']}",
-                        style: TextStyle(color: textColor),
+                      );
+                    },
+                    child: Container(
+                      margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: backgroundColor,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.5),
+                            spreadRadius: 2,
+                            blurRadius: 7,
+                            offset: Offset(0, 3), // changes position of shadow
+                          ),
+                        ],
+                      ),
+                      child: ListTile(
+                        title: Text(data['title'], style: TextStyle(color: textColor)),
+                        subtitle: Text(
+                          "${DateFormat('dd.MM.yyyy HH:mm').format(data['date'].toDate())} - Вместимость: ${data['capacity']}",
+                          style: TextStyle(color: textColor),
+                        ),
                       ),
                     ),
                   ),

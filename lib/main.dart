@@ -1,5 +1,6 @@
 import 'package:fitnessgo/email_verification_screen.dart';
 import 'package:fitnessgo/main_set_screen.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fitnessgo/registration_screen.dart';
@@ -15,6 +16,7 @@ import 'package:theme_provider/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('ru_RU', null);
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   
   bool isLoggedIn = await checkLoginStatus();

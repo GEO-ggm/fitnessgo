@@ -78,25 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 );
               }),
               //TODO: Верификация будет в дальнейших обновлениях
-              buildButton(context, 'Пройти верификацию', () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: Text('Пройти верификацию', style: GoogleFonts.poppins()),
-                      content: Text('Я еще в разработке...', style: GoogleFonts.poppins()),
-                      actions: <Widget>[
-                        TextButton(
-                          child: Text('ОК', style: GoogleFonts.poppins()),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                        ),
-                      ],
-                    );
-                  },
-                );
-              }),
+              
               buildButton(context, 'Выйти из аккаунта', () async {
                 await _signOut(context);
               }),
@@ -183,47 +165,131 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _deleteAccount(BuildContext context, String password) async {
-    final FirebaseAuth _auth = FirebaseAuth.instance;
-    User? user = _auth.currentUser;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  User? user = _auth.currentUser;
 
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Пользователь не найден')),
-      );
-      return;
-    }
-
-    try {
-      // Reauthenticate the user
-      AuthCredential credential = EmailAuthProvider.credential(
-        email: user.email!,
-        password: password, // Замените на пароль, введенный пользователем для подтверждения
-      );
-
-      await user.reauthenticateWithCredential(credential);
-
-      // Delete user's data from Firestore
-      await FirebaseFirestore.instance.collection('Users').doc(user.uid).delete();
-      
-      // Удалите все связанные данные в других коллекциях, если это необходимо
-
-      // Delete the user
-      await user.delete();
-      await DefaultCacheManager().emptyCache();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Аккаунт успешно удален')),
-      );
-
-      // start screen
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => AuthorizationScreen()),
-        (Route<dynamic> route) => false,
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: ${e.toString()}')),
-      );
-    }
+  if (user == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Пользователь не найден')),
+    );
+    return;
   }
+
+  try {
+    // Reauthenticate the user
+    AuthCredential credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: password, // Замените на пароль, введенный пользователем для подтверждения
+    );
+
+    await user.reauthenticateWithCredential(credential);
+
+    // Delete user's data from Firestore
+    await _deleteUserData(user.uid);
+
+    // Delete the user
+    await user.delete();
+    await DefaultCacheManager().emptyCache();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Аккаунт успешно удален')),
+    );
+
+    // Start screen
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => AuthorizationScreen()),
+      (Route<dynamic> route) => false,
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Ошибка: ${e.toString()}')),
+    );
+  }
+}
+
+Future<void> _deleteUserData(String userId) async {
+  FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+  // Удаляем пользователя из коллекции Users
+  await firestore.collection('Users').doc(userId).delete();
+
+  // Удаляем тренировки пользователя из коллекции Trainings
+  QuerySnapshot trainingsSnapshot = await firestore
+      .collection('Trainings')
+      .where('coachId', isEqualTo: userId)
+      .get();
+  for (DocumentSnapshot doc in trainingsSnapshot.docs) {
+    await doc.reference.delete();
+  }
+
+  // Удаляем тренировки, в которых пользователь является участником
+  QuerySnapshot participantTrainingsSnapshot = await firestore
+      .collection('Trainings')
+      .where('participants', arrayContains: userId)
+      .get();
+  for (DocumentSnapshot doc in participantTrainingsSnapshot.docs) {
+    await doc.reference.update({
+      'participants': FieldValue.arrayRemove([userId])
+    });
+  }
+
+  // Удаляем все чаты пользователя
+  QuerySnapshot chatsSnapshot = await firestore
+      .collection('chats')
+      .where('users', arrayContains: userId)
+      .get();
+  for (DocumentSnapshot chatDoc in chatsSnapshot.docs) {
+    await chatDoc.reference.delete();
+  }
+
+  // Удаляем курсы пользователя
+  QuerySnapshot coursesSnapshot = await firestore
+      .collection('courses')
+      .where('uid', isEqualTo: userId)
+      .get();
+  for (DocumentSnapshot doc in coursesSnapshot.docs) {
+    await doc.reference.delete();
+  }
+
+  // Удаляем запросы пользователя
+  QuerySnapshot requestsSnapshot = await firestore
+      .collection('Users')
+      .doc(userId)
+      .collection('Requests')
+      .get();
+  for (DocumentSnapshot doc in requestsSnapshot.docs) {
+    await doc.reference.delete();
+  }
+
+  // Удаляем отзывы пользователя
+  QuerySnapshot reviewsSnapshot = await firestore
+      .collection('Users')
+      .doc(userId)
+      .collection('Reviews')
+      .get();
+  for (DocumentSnapshot doc in reviewsSnapshot.docs) {
+    await doc.reference.delete();
+  }
+
+  // Удаляем питание пользователя
+  QuerySnapshot mealsSnapshot = await firestore
+      .collection('Users')
+      .doc(userId)
+      .collection('Meals')
+      .get();
+  for (DocumentSnapshot doc in mealsSnapshot.docs) {
+    await doc.reference.delete();
+  }
+
+  // Удаляем вес пользователя
+  DocumentSnapshot weightDoc = await firestore
+      .collection('Users')
+      .doc(userId)
+      .get();
+  if (weightDoc.exists) {
+    await weightDoc.reference.update({
+      'weightData': FieldValue.delete(),
+    });
+  }
+}
 }

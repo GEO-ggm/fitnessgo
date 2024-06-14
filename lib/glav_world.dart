@@ -23,7 +23,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-     
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -140,7 +139,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                           title: Text(post['content']),
                         );
                       }
-                      var userData = userSnapshot.data!.data() as Map<String, dynamic>;
+                      var userData = userSnapshot.data?.data() as Map<String, dynamic>?; // добавил проверку на null
+                      if (userData == null) {
+                        return ListTile(
+                          title: Text('Пользователь не найден'),
+                        );
+                      }
                       return Card(
                         child: ListTile(
                           leading: CircleAvatar(

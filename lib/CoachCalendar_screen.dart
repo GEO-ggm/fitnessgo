@@ -1,34 +1,35 @@
-import 'package:fitnessgo/train_detail_check.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
-class ScheduleScreen extends StatefulWidget {
+import 'CoachTrainCheck.dart';
+
+class CoachScheduleScreen extends StatefulWidget {
   @override
-  _ScheduleScreenState createState() => _ScheduleScreenState();
+  _CoachScheduleScreenState createState() => _CoachScheduleScreenState();
 }
 
-class _ScheduleScreenState extends State<ScheduleScreen> {
+class _CoachScheduleScreenState extends State<CoachScheduleScreen> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _selectedDay = DateTime.now();
   DateTime _focusedDay = DateTime.now();
-  Map<DateTime, List<dynamic>> _trainingSessions = {};
+  Map<DateTime, List<Map<String, dynamic>>> _trainingSessions = {};
 
   @override
   void initState() {
     super.initState();
-    initializeDateFormatting('ru_RU', null).then((_) => _loadUserWorkouts());
+    initializeDateFormatting('ru_RU', null).then((_) => _loadCoachWorkouts());
   }
 
-  void _loadUserWorkouts() {
+  void _loadCoachWorkouts() {
     var currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
       FirebaseFirestore.instance
           .collection('Trainings')
-          .where('participants', arrayContains: currentUser.uid)
+          .where('coachId', isEqualTo: currentUser.uid)
           .snapshots()
           .listen((snapshot) {
         if (snapshot.docs.isEmpty) {
@@ -40,8 +41,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         Map<DateTime, List<Map<String, dynamic>>> newTrainingSessions = {};
         for (var doc in snapshot.docs) {
           var workoutData = doc.data() as Map<String, dynamic>;
-          var date = (workoutData['date'] as Timestamp).toDate().toUtc();
-          var dateKey = DateTime.utc(date.year, date.month, date.day);
+          var date = (workoutData['date'] as Timestamp).toDate().toLocal();
+          var dateKey = DateTime(date.year, date.month, date.day);
 
           if (!newTrainingSessions.containsKey(dateKey)) {
             newTrainingSessions[dateKey] = [];
@@ -55,28 +56,26 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             'workoutId': doc.id,
             'isIndividual': workoutData['title'] == 'Индивидуальная тренировка',
           });
-
-          print("Added workout to sessions: ${newTrainingSessions[dateKey]}");
         }
 
         setState(() {
           _trainingSessions = newTrainingSessions;
-          print("State updated with new training sessions");
+          print("Updated training sessions: $_trainingSessions");
         });
       });
-    } else {
-      print("No current user found");
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    print("Building Schedule Screen with selected day: $_selectedDay");
+    print("Building CoachScheduleScreen with selected day: $_selectedDay");
     print("Training sessions for selected day: ${_trainingSessions[_selectedDay]}");
+
     return Scaffold(
       body: Column(
         children: <Widget>[
           TableCalendar(
+            locale: 'ru_RU',
             firstDay: DateTime.utc(2023, 1, 1),
             lastDay: DateTime.utc(2030, 12, 31),
             focusedDay: _focusedDay,
@@ -84,14 +83,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             availableCalendarFormats: const {CalendarFormat.month: 'Месяц'},
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             onDaySelected: (selectedDay, focusedDay) {
-              var formattedSelectedDay = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
-              print("Selected day: $formattedSelectedDay");
               setState(() {
                 _selectedDay = selectedDay;
                 _focusedDay = focusedDay;
               });
+              print("Selected day: $selectedDay");
+              print("Training sessions for selected day: ${_trainingSessions[selectedDay]}");
             },
-            eventLoader: (day) => _trainingSessions[DateTime.utc(day.year, day.month, day.day)] ?? [],
+            eventLoader: (day) {
+              final events = _trainingSessions[DateTime(day.year, day.month, day.day)] ?? [];
+              print("Events for $day: $events");
+              return events;
+            },
             calendarStyle: CalendarStyle(
               todayDecoration: BoxDecoration(
                 color: Colors.green.withOpacity(0.6),
@@ -123,13 +126,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
           Expanded(
             child: ListView.builder(
-              itemCount: _trainingSessions[_selectedDay]?.length ?? 0,
+              itemCount: _trainingSessions[DateTime(_selectedDay.year, _selectedDay.month, _selectedDay.day)]?.length ?? 0,
               itemBuilder: (context, index) {
-                var session = _trainingSessions[_selectedDay]![index];
+                var session = _trainingSessions[DateTime(_selectedDay.year, _selectedDay.month, _selectedDay.day)]![index];
                 return ListTile(
                   title: Text(session['title']),
-                  subtitle: Text("${DateFormat('dd.MM в HH:mm').format(session['date'].toLocal())} - ${session['description']}"),
-                  onTap: (session['isIndividual'] == true)
+                  subtitle: Text("${DateFormat('dd.MM в HH:mm').format(session['date'])} - ${session['description']}"),
+                  onTap: session['title'] == 'Индивидуальная тренировка'
                       ? null
                       : () {
                           if (session.containsKey('workoutId') && session['workoutId'] != null) {

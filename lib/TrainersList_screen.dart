@@ -101,33 +101,6 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
     }
   }
 
-  Future<void> _submitRequest(String letter) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final request = {
-        'userId': user.uid,
-        'status': 'pending',
-        'timestamp': FieldValue.serverTimestamp(),
-        'category': selectedCategory,
-        'letter': letter,
-      };
-
-      await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(widget.trainerId)
-          .collection('Requests')
-          .add(request);
-
-      setState(() {
-        isRequestSent = true;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Запрос отправлен!')),
-      );
-    }
-  }
-
   Future<void> _cancelRequest() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -151,23 +124,6 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
         SnackBar(content: Text('Запрос отменен.')),
       );
     }
-  }
-
-  void _showCategorySelectionScreen() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CategorySelectionScreen(
-          trainerId: widget.trainerId,
-          onCategorySelected: (category, letter) {
-            setState(() {
-              selectedCategory = category;
-            });
-            _submitRequest(letter);
-          },
-        ),
-      ),
-    );
   }
 
   @override
@@ -233,10 +189,11 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
                                   itemSize: 24.0,
                                   direction: Axis.horizontal,
                                 ),
-                                Text(
-                                  '${trainerData['rating']?.toDouble() ?? 0.0}',
+                                  Text(
+                                  '${(trainerData['rating']?.toDouble() ?? 0.0).toStringAsFixed(1)}',
                                   style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
                                 ),
+
                               ],
                             ),
                           ),
@@ -392,6 +349,50 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
         ),
       ),
     );
+  }
+
+  void _showCategorySelectionScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CategorySelectionScreen(
+          trainerId: widget.trainerId,
+          onCategorySelected: (category, letter) {
+            setState(() {
+              selectedCategory = category;
+            });
+            _submitRequest(letter);
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitRequest(String letter) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final request = {
+        'userId': user.uid,
+        'status': 'pending',
+        'timestamp': FieldValue.serverTimestamp(),
+        'category': selectedCategory,
+        'letter': letter,
+      };
+
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(widget.trainerId)
+          .collection('Requests')
+          .add(request);
+
+      setState(() {
+        isRequestSent = true;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Запрос отправлен!')),
+      );
+    }
   }
 
   String getIconPath(String categoryName) {
@@ -687,42 +688,67 @@ class _TrainerReviewsScreenState extends State<TrainerReviewsScreen> {
   double _rating = 3.0;
 
   Future<void> _submitReview(BuildContext dialogContext) async {
-    if (_reviewController.text.isEmpty) {
-      ScaffoldMessenger.of(dialogContext).showSnackBar(
-        SnackBar(content: Text('Распишите ваш отзыв!')),
-      );
-      return;
+  if (_reviewController.text.isEmpty) {
+    ScaffoldMessenger.of(dialogContext).showSnackBar(
+      SnackBar(content: Text('Распишите ваш отзыв!')),
+    );
+    return;
+  }
+
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    ScaffoldMessenger.of(dialogContext).showSnackBar(
+      SnackBar(content: Text('You must be logged in to leave a review.')),
+    );
+    return;
+  }
+
+  final review = {
+    'userId': user.uid,
+    'rating': _rating,
+    'text': _reviewController.text,
+    'timestamp': FieldValue.serverTimestamp(),
+  };
+
+  await FirebaseFirestore.instance
+      .collection('Users')
+      .doc(widget.trainerId)
+      .collection('Reviews')
+      .add(review);
+
+  _reviewController.clear();
+  Navigator.of(dialogContext).pop();
+
+  // Обновляем рейтинг тренера
+  _updateTrainerRating(widget.trainerId);
+
+  Future.delayed(Duration(milliseconds: 300), () {
+    ScaffoldMessenger.of(dialogContext).showSnackBar(
+      SnackBar(content: Text('Отзыв добавлен!')),
+    );
+  });
+}
+
+Future<void> _updateTrainerRating(String trainerId) async {
+  final reviewsSnapshot = await FirebaseFirestore.instance
+      .collection('Users')
+      .doc(trainerId)
+      .collection('Reviews')
+      .get();
+
+  if (reviewsSnapshot.docs.isNotEmpty) {
+    double totalRating = 0.0;
+    for (var doc in reviewsSnapshot.docs) {
+      totalRating += doc['rating'];
     }
+    double newRating = totalRating / reviewsSnapshot.docs.length;
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(dialogContext).showSnackBar(
-        SnackBar(content: Text('You must be logged in to leave a review.')),
-      );
-      return;
-    }
-
-    final review = {
-      'userId': user.uid,
-      'rating': _rating,
-      'text': _reviewController.text,
-      'timestamp': FieldValue.serverTimestamp(),
-    };
-
-    await FirebaseFirestore.instance
-        .collection('Users')
-        .doc(widget.trainerId)
-        .collection('Reviews')
-        .add(review);
-
-    _reviewController.clear();
-    Navigator.of(dialogContext).pop();
-    Future.delayed(Duration(milliseconds: 300), () {
-      ScaffoldMessenger.of(dialogContext).showSnackBar(
-        SnackBar(content: Text('Отзыв добавлен!')),
-      );
+    // Обновляем поле рейтинга у тренера
+    await FirebaseFirestore.instance.collection('Users').doc(trainerId).update({
+      'rating': newRating,
     });
   }
+}
 
   @override
   Widget build(BuildContext context) {

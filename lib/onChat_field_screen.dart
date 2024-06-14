@@ -1,3 +1,4 @@
+import 'package:fitnessgo/train_detail_check.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -150,7 +151,23 @@ class _IndividualChatScreenState extends State<IndividualChatScreen> {
                       var messageData = snapshot.data!.docs[index].data() as Map<String, dynamic>;
                       bool myMessage = messageData['userId'] == currentUser.uid;
                       Widget content;
-                      if (messageData['hasAttachment'] == true && messageData['icon'] != null) {
+                      if (messageData['icon'] == 'whistle' && messageData['iconColor'] == 'green') {
+                        content = Row(
+                          children: [
+                            Icon(
+                              Icons.sports_gymnastics,
+                              color: Colors.green,
+                            ),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                messageData['text'],
+                                style: TextStyle(color: textColor),
+                              ),
+                            ),
+                          ],
+                        );
+                      } else if (messageData['hasAttachment'] == true && messageData['icon'] != null) {
                         content = Row(
                           children: [
                             Icon(
@@ -169,7 +186,7 @@ class _IndividualChatScreenState extends State<IndividualChatScreen> {
                       } else {
                         content = Text(
                           messageData['text'],
-                          style:TextStyle(color: textColor),
+                          style: TextStyle(color: textColor),
                         );
                       }
 
@@ -186,13 +203,13 @@ class _IndividualChatScreenState extends State<IndividualChatScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               content,
-                              if (messageData.containsKey('trainingId') && !myMessage)
+                              if (messageData.containsKey('trainingId') && !myMessage && messageData['title'] != 'Индивидуальная тренировка')
                                 ElevatedButton(
                                   onPressed: () {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => WorkoutDetailScreen(workoutId: messageData['trainingId']),
+                                        builder: (context) => TrainDetailCheck(trainingId: messageData['trainingId']),
                                       ),
                                     );
                                   },
